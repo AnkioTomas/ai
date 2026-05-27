@@ -13,7 +13,7 @@ material = "1.14.0"
 okhttp = "4.12.0"
 kotlinxCoroutinesAndroid = "1.8.0"
 kotlinxSerializationJson = "1.8.0"
-theme = "1.0.9"
+theme = "1.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

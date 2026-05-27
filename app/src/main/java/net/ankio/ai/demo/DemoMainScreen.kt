@@ -81,6 +81,9 @@ fun DemoMainScreen(
                     onVisionEnabledChange = {
                         settingsState = settingsState.copy(visionEnabled = it)
                     },
+                    onTemperatureChange = {
+                        settingsState = settingsState.copy(temperature = it)
+                    },
                     onSave = {
                         scope.launch {
                             val def = ai.providers.first { it.id == settingsState.providerId }
