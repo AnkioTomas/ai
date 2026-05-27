@@ -1,7 +1,7 @@
-package net.ankio.ai.lib.ui
+package net.ankio.ai.lib.ui.settings
 
-import net.ankio.ai.lib.ProviderDef
-import net.ankio.ai.lib.ProviderSettings
+import net.ankio.ai.lib.core.ProviderSettings
+import net.ankio.ai.lib.provider.ProviderDef
 
 data class AiSettingsState(
     val providerId: String,

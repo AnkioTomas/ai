@@ -9,6 +9,10 @@
     <string name="ai_model_hint">留空使用默认：%1$s</string>
     <string name="ai_vision_enabled">启用视觉识别</string>
     <string name="ai_create_key">获取 API Key</string>
+    <string name="ai_show_api_key">显示 API Key</string>
+    <string name="ai_hide_api_key">隐藏 API Key</string>
+    <string name="ai_pick_model">选择模型</string>
+    <string name="ai_model_list_empty">暂无模型，请先点击刷新</string>
     <string name="ai_refresh_models">刷新模型列表</string>
     <string name="ai_refresh_models_failed">刷新模型失败：%1$s</string>
     <string name="ai_save">保存</string>

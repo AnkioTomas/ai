@@ -1,13 +1,14 @@
-package net.ankio.ai.lib
+package net.ankio.ai.lib.core
 
-import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import net.ankio.ai.lib.provider.AiCtx
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.cancellation.CancellationException
 
 object AiJson {
     val json: Json = Json {
@@ -52,5 +53,9 @@ fun <T> Json.encodeBody(value: T, serializer: KSerializer<T>) =
 fun <T> Json.decodeBody(body: String, serializer: KSerializer<T>): T =
     decodeFromString(serializer, body)
 
-fun <T> Request.Builder.postJson(json: Json, serializer: KSerializer<T>, value: T): Request.Builder =
+fun <T> Request.Builder.postJson(
+    json: Json,
+    serializer: KSerializer<T>,
+    value: T
+): Request.Builder =
     post(json.encodeBody(value, serializer))

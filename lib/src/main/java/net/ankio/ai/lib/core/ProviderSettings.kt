@@ -1,4 +1,4 @@
-package net.ankio.ai.lib
+package net.ankio.ai.lib.core
 
 import kotlinx.serialization.Serializable
 

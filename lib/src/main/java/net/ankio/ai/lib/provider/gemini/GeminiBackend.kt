@@ -1,12 +1,22 @@
-package net.ankio.ai.lib
+package net.ankio.ai.lib.provider.gemini
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import net.ankio.ai.lib.core.AiHttp
+import net.ankio.ai.lib.core.AiJson
+import net.ankio.ai.lib.core.decodeBody
+import net.ankio.ai.lib.core.postJson
+import net.ankio.ai.lib.core.removeThink
+import net.ankio.ai.lib.core.runCatchingExceptCancel
+import net.ankio.ai.lib.core.userAgent
 import net.ankio.ai.lib.model.gemini.GeminiGenerateRequest
 import net.ankio.ai.lib.model.gemini.GeminiGenerateResponse
 import net.ankio.ai.lib.model.gemini.GeminiModelsResponse
 import net.ankio.ai.lib.model.gemini.GeminiRequestFactory
 import net.ankio.ai.lib.model.gemini.firstText
+import net.ankio.ai.lib.provider.AiCtx
+import net.ankio.ai.lib.provider.ProviderBackend
+import net.ankio.ai.lib.provider.ProviderDef
 import okhttp3.Request
 
 internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
@@ -47,7 +57,11 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
         val request = Request.Builder()
             .url("${baseUri(ctx)}/${ctx.model}:$path")
             .userAgent(ctx)
-            .postJson(json, GeminiGenerateRequest.serializer(), GeminiRequestFactory.build(system, user, image))
+            .postJson(
+                json,
+                GeminiGenerateRequest.serializer(),
+                GeminiRequestFactory.build(system, user, image)
+            )
             .addHeader("x-goog-api-key", ctx.apiKey)
             .addHeader("Content-Type", "application/json")
             .build()
@@ -76,6 +90,9 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
         }
     }
 
-    private fun parse(body: String, ser: kotlinx.serialization.KSerializer<GeminiGenerateResponse>): String? =
+    private fun parse(
+        body: String,
+        ser: kotlinx.serialization.KSerializer<GeminiGenerateResponse>
+    ): String? =
         runCatching { json.decodeBody(body, ser).firstText() }.getOrNull()
 }

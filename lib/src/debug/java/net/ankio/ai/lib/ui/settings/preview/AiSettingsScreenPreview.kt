@@ -1,11 +1,11 @@
-package net.ankio.ai.lib.ui.preview
+package net.ankio.ai.lib.ui.settings.preview
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import net.ankio.ai.lib.Ai
-import net.ankio.ai.lib.AiProviders
-import net.ankio.ai.lib.InMemoryAiDataStore
-import net.ankio.ai.lib.ui.AiSettingsScreen
+import net.ankio.ai.lib.core.AiLogger
+import net.ankio.ai.lib.store.InMemoryAiDataStore
+import net.ankio.ai.lib.ui.settings.AiSettingsScreen
 import net.ankio.theme.PreviewAllScreen
 import net.ankio.theme.PreviewAllThemes
 import net.ankio.theme.ThemePreviewConfig
@@ -17,9 +17,10 @@ private fun AiSettingsScreenPreview(
     @PreviewParameter(ThemePreviewParameterProvider::class) config: ThemePreviewConfig,
 ) {
     PreviewAllThemes(config) {
+        val ai = Ai(InMemoryAiDataStore(), PreviewAiLogger)
         AiSettingsScreen(
-            ai = Ai(InMemoryAiDataStore()),
-            providers = AiProviders.all,
+            ai = ai,
+            providers = ai.providers,
             state = AiPreviewSamples.settingsState,
             onProviderChange = {},
             onApiKeyChange = {},
@@ -30,4 +31,9 @@ private fun AiSettingsScreenPreview(
             onTestStateChange = {},
         )
     }
+}
+
+private object PreviewAiLogger : AiLogger {
+    override fun debug(tag: String, message: String) = Unit
+    override fun error(tag: String, message: String, throwable: Throwable?) = Unit
 }

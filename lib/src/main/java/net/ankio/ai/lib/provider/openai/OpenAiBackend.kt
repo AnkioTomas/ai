@@ -1,7 +1,14 @@
-package net.ankio.ai.lib
+package net.ankio.ai.lib.provider.openai
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import net.ankio.ai.lib.core.AiHttp
+import net.ankio.ai.lib.core.AiJson
+import net.ankio.ai.lib.core.decodeBody
+import net.ankio.ai.lib.core.postJson
+import net.ankio.ai.lib.core.removeThink
+import net.ankio.ai.lib.core.runCatchingExceptCancel
+import net.ankio.ai.lib.core.userAgent
 import net.ankio.ai.lib.model.openai.ApiErrorResponse
 import net.ankio.ai.lib.model.openai.ChatCompletionRequest
 import net.ankio.ai.lib.model.openai.ChatCompletionResponse
@@ -11,6 +18,9 @@ import net.ankio.ai.lib.model.openai.ModelsListResponse
 import net.ankio.ai.lib.model.openai.firstContent
 import net.ankio.ai.lib.model.openai.firstDeltaContent
 import net.ankio.ai.lib.model.openai.resolveMessage
+import net.ankio.ai.lib.provider.AiCtx
+import net.ankio.ai.lib.provider.ProviderBackend
+import net.ankio.ai.lib.provider.ProviderDef
 import okhttp3.Request
 
 internal class OpenAiBackend(
@@ -69,7 +79,10 @@ internal class OpenAiBackend(
                 AiHttp.client.newCall(request).execute().use { response ->
                     val text = response.body?.string()?.removeThink() ?: error("Empty body")
                     if (!response.isSuccessful) {
-                        error(json.decodeBody(text, ApiErrorResponse.serializer()).resolveMessage(text))
+                        error(
+                            json.decodeBody(text, ApiErrorResponse.serializer())
+                                .resolveMessage(text)
+                        )
                     }
                     json.decodeBody(text, ChatCompletionResponse.serializer()).firstContent()
                 }

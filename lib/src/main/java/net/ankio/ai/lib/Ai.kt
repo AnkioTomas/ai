@@ -1,5 +1,15 @@
 package net.ankio.ai.lib
 
+import net.ankio.ai.lib.core.AiDataStore
+import net.ankio.ai.lib.core.AiLogger
+import net.ankio.ai.lib.core.ProviderSettings
+import net.ankio.ai.lib.core.runCatchingExceptCancel
+import net.ankio.ai.lib.provider.AiCtx
+import net.ankio.ai.lib.provider.AiProviders
+import net.ankio.ai.lib.provider.ProviderBackend
+import net.ankio.ai.lib.provider.ProviderDef
+import net.ankio.ai.lib.test.AiTestDemo
+
 /** 默认提供商 id，与 [AiProviders.DEFAULT_ID] 一致。 */
 const val AI_DEFAULT_PROVIDER_ID: String = "deepseek"
 
@@ -8,7 +18,7 @@ const val AI_DEFAULT_PROVIDER_ID: String = "deepseek"
  */
 class Ai(
     private val store: AiDataStore,
-    private val logger: AiLogger = NoOpAiLogger,
+    private val logger: AiLogger,
     private val userAgent: String = "1",
 ) {
     val providers: List<ProviderDef> = AiProviders.all
@@ -133,17 +143,4 @@ class Ai(
             error("提供商「${ctx.def.displayName}」未启用视觉识别")
         }
     }
-}
-
-/** 测试 / Demo 用内存存储 */
-class InMemoryAiDataStore(
-    initialId: String = AiProviders.DEFAULT_ID,
-) : AiDataStore {
-    private var active = initialId
-    private val map = mutableMapOf<String, ProviderSettings>()
-
-    override suspend fun getActiveProviderId() = active
-    override suspend fun setActiveProviderId(providerId: String) { active = providerId }
-    override suspend fun getSettings(providerId: String) = map[providerId]
-    override suspend fun saveSettings(settings: ProviderSettings) { map[settings.providerId] = settings }
 }

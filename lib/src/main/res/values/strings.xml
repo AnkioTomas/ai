@@ -9,6 +9,10 @@
     <string name="ai_model_hint">Leave blank for default: %1$s</string>
     <string name="ai_vision_enabled">Enable vision</string>
     <string name="ai_create_key">Get API Key</string>
+    <string name="ai_show_api_key">Show API Key</string>
+    <string name="ai_hide_api_key">Hide API Key</string>
+    <string name="ai_pick_model">Pick model</string>
+    <string name="ai_model_list_empty">No models yet. Tap refresh first.</string>
     <string name="ai_refresh_models">Refresh model list</string>
     <string name="ai_refresh_models_failed">Failed to refresh models: %1$s</string>
     <string name="ai_save">Save</string>

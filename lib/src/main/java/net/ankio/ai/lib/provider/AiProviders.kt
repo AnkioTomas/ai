@@ -1,4 +1,9 @@
-package net.ankio.ai.lib
+package net.ankio.ai.lib.provider
+
+import net.ankio.ai.lib.core.AiLogger
+import net.ankio.ai.lib.core.ProviderSettings
+import net.ankio.ai.lib.provider.gemini.GeminiBackend
+import net.ankio.ai.lib.provider.openai.OpenAiBackend
 
 /** 内置提供商元数据 */
 data class ProviderDef(
@@ -66,9 +71,27 @@ internal object AiProviders {
     )
 
     // ── 已有 ──────────────────────────────────────────────────────────
-    val DEEPSEEK = openAi("deepseek", "DeepSeek", "https://api.deepseek.com", "deepseek-chat", "https://platform.deepseek.com/api-keys")
-    val CHATGPT = openAi("chatgpt", "ChatGPT", "https://api.openai.com", "gpt-4o-mini", "https://platform.openai.com/api-keys")
-    val KIMI = openAi("kimi", "Kimi", "https://api.moonshot.cn", "moonshot-v1-8k", "https://platform.moonshot.cn/console/api-keys")
+    val DEEPSEEK = openAi(
+        "deepseek",
+        "DeepSeek",
+        "https://api.deepseek.com",
+        "deepseek-chat",
+        "https://platform.deepseek.com/api-keys"
+    )
+    val CHATGPT = openAi(
+        "chatgpt",
+        "ChatGPT",
+        "https://api.openai.com",
+        "gpt-4o-mini",
+        "https://platform.openai.com/api-keys"
+    )
+    val KIMI = openAi(
+        "kimi",
+        "Kimi",
+        "https://api.moonshot.cn",
+        "moonshot-v1-8k",
+        "https://platform.moonshot.cn/console/api-keys"
+    )
     val BIGMODEL = openAi(
         "bigmodel", "智谱清言", "https://open.bigmodel.cn/api", "glm-4.5",
         "https://bigmodel.cn/usercenter/proj-mgmt/apikeys",
@@ -80,15 +103,44 @@ internal object AiProviders {
             "glm-4-flashx-250414", "glm-z1-air", "glm-z1-airx", "glm-z1-flash", "glm-z1-flashx",
         ),
     )
-    val OPENROUTER = openAi("openrouter", "OpenRouter", "https://openrouter.ai/api", "openai/gpt-4o-mini", "https://openrouter.ai/keys")
-    val QWEN = openAi("qwen", "通义千问", "https://dashscope.aliyuncs.com/compatible-mode", "qwen-plus", "https://bailian.console.aliyun.com/")
-    val SILICONFLOW = openAi("siliconflow", "硅基流动", "https://api.siliconflow.cn", "deepseek-ai/DeepSeek-V3", "https://cloud.siliconflow.cn/account/ak")
-    val MIMO = openAi("mimo", "小米 MiMo", "https://api.xiaomimimo.com", "mimo-v2-flash", "https://platform.xiaomimimo.com/")
+    val OPENROUTER = openAi(
+        "openrouter",
+        "OpenRouter",
+        "https://openrouter.ai/api",
+        "openai/gpt-4o-mini",
+        "https://openrouter.ai/keys"
+    )
+    val QWEN = openAi(
+        "qwen",
+        "通义千问",
+        "https://dashscope.aliyuncs.com/compatible-mode",
+        "qwen-plus",
+        "https://bailian.console.aliyun.com/"
+    )
+    val SILICONFLOW = openAi(
+        "siliconflow",
+        "硅基流动",
+        "https://api.siliconflow.cn",
+        "deepseek-ai/DeepSeek-V3",
+        "https://cloud.siliconflow.cn/account/ak"
+    )
+    val MIMO = openAi(
+        "mimo",
+        "小米 MiMo",
+        "https://api.xiaomimimo.com",
+        "mimo-v2-flash",
+        "https://platform.xiaomimimo.com/"
+    )
 
     // ── 新增：国内 ────────────────────────────────────────────────────
     val DOUBAO = openAi(
-        "doubao", "豆包", "https://ark.cn-beijing.volces.com/api/v3", "doubao-1-5-pro-32k",
-        "https://console.volcengine.com/ark", chatPath = "/chat/completions", modelsPath = "/models",
+        "doubao",
+        "豆包",
+        "https://ark.cn-beijing.volces.com/api/v3",
+        "doubao-1-5-pro-32k",
+        "https://console.volcengine.com/ark",
+        chatPath = "/chat/completions",
+        modelsPath = "/models",
     )
     val MINIMAX = openAi(
         "minimax", "MiniMax", "https://api.minimaxi.com/v1", "MiniMax-Text-01",
@@ -108,9 +160,27 @@ internal object AiProviders {
     )
 
     // ── 新增：海外 / 聚合 ─────────────────────────────────────────────
-    val MISTRAL = openAi("mistral", "Mistral", "https://api.mistral.ai/v1", "mistral-small-latest", "https://console.mistral.ai/api-keys/")
-    val GROQ = openAi("groq", "Groq", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile", "https://console.groq.com/keys")
-    val TOGETHER = openAi("together", "Together AI", "https://api.together.xyz/v1", "meta-llama/Llama-3.3-70B-Instruct-Turbo", "https://api.together.xyz/settings/api-keys")
+    val MISTRAL = openAi(
+        "mistral",
+        "Mistral",
+        "https://api.mistral.ai/v1",
+        "mistral-small-latest",
+        "https://console.mistral.ai/api-keys/"
+    )
+    val GROQ = openAi(
+        "groq",
+        "Groq",
+        "https://api.groq.com/openai/v1",
+        "llama-3.3-70b-versatile",
+        "https://console.groq.com/keys"
+    )
+    val TOGETHER = openAi(
+        "together",
+        "Together AI",
+        "https://api.together.xyz/v1",
+        "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        "https://api.together.xyz/settings/api-keys"
+    )
     val GITHUB = openAi(
         "github", "GitHub Models", "https://models.inference.ai.azure.com", "gpt-4o-mini",
         "https://github.com/settings/tokens",
@@ -129,7 +199,7 @@ internal object AiProviders {
         "lmstudio", "LM Studio", "http://127.0.0.1:1234/v1", "local-model",
         "https://lmstudio.ai/",
     )
- 
+
     /**
      * Azure：请在设置里把 apiUri 设为
      * `https://{资源名}.openai.azure.com/openai/deployments/{部署名}`

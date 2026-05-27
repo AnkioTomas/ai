@@ -1,7 +1,7 @@
-package net.ankio.ai.lib.ui.preview
+package net.ankio.ai.lib.ui.settings.preview
 
-import net.ankio.ai.lib.ui.AiSettingsState
-import net.ankio.ai.lib.ui.AiTestUiState
+import net.ankio.ai.lib.ui.settings.AiSettingsState
+import net.ankio.ai.lib.ui.settings.AiTestUiState
 
 internal object AiPreviewSamples {
     val settingsState = AiSettingsState(
@@ -11,5 +11,6 @@ internal object AiPreviewSamples {
         visionEnabled = true,
     )
     val settingsStateSuccess = settingsState.copy(testState = AiTestUiState.Success)
-    val settingsStateFailure = settingsState.copy(testState = AiTestUiState.Failure("401 Unauthorized"))
+    val settingsStateFailure =
+        settingsState.copy(testState = AiTestUiState.Failure("401 Unauthorized"))
 }

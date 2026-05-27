@@ -1,4 +1,4 @@
-package net.ankio.ai.lib.ui
+package net.ankio.ai.lib.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -29,10 +31,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import net.ankio.ai.lib.Ai
-import net.ankio.ai.lib.AiTest
-import net.ankio.ai.lib.AiTestResult
-import net.ankio.ai.lib.ProviderDef
 import net.ankio.ai.lib.R
+import net.ankio.ai.lib.provider.ProviderDef
+import net.ankio.ai.lib.test.AiTest
+import net.ankio.ai.lib.test.AiTestResult
 import net.ankio.theme.AnkioTheme
 import net.ankio.theme.compat.ThemeCard
 import net.ankio.theme.compat.ThemeIcon
@@ -44,13 +46,13 @@ import net.ankio.theme.compat.ThemeText
 import net.ankio.theme.settings.SettingCardPosition
 import net.ankio.theme.settings.SettingInputMode
 import net.ankio.theme.settings.ThemeSectionHeader
-import net.ankio.theme.settings.ThemeSettingComboField
 import net.ankio.theme.settings.ThemeSettingDropdown
 import net.ankio.theme.settings.ThemeSettingSwitch
 import net.ankio.theme.settings.ThemeSettingTextField
 
 /**
- * AI 配置页：使用 theme 设置组件（[ThemeSettingTextField] / [ThemeSettingComboField] 等）分组拼接。
+ * AI 配置页：Provider 下拉；API / Key / Model 为 [ThemeSettingTextField]；
+ * Key 支持明文切换；Model 通过 [SettingFieldListPopup] 选择。
  */
 @Composable
 fun AiSettingsScreen(
@@ -74,6 +76,7 @@ fun AiSettingsScreen(
 
     var modelItems by remember(state.providerId) { mutableStateOf<List<String>>(emptyList()) }
     var isRefreshingModels by remember { mutableStateOf(false) }
+    var apiKeyVisible by rememberSaveable { mutableStateOf(false) }
 
     val invalidMessage = stringResource(R.string.ai_config_invalid)
     val testingMessage = stringResource(
@@ -86,16 +89,15 @@ fun AiSettingsScreen(
     val savedMessage = stringResource(R.string.ai_saved)
     val refreshModelsMessage = stringResource(R.string.ai_refresh_models)
     val refreshModelsFailedTemplate = stringResource(R.string.ai_refresh_models_failed)
+    val showKeyLabel = stringResource(R.string.ai_show_api_key)
+    val hideKeyLabel = stringResource(R.string.ai_hide_api_key)
 
-    val effectiveModel = state.model.ifBlank { def.defaultModel }
-    val modelOptions = remember(modelItems, effectiveModel, def.defaultModel) {
+    val modelPopupOptions = remember(modelItems, state.model) {
         buildList {
-            if (effectiveModel.isNotBlank()) add(effectiveModel)
-            addAll(modelItems.filter { it.isNotBlank() && it != effectiveModel })
-            if (isEmpty() && def.defaultModel.isNotBlank()) add(def.defaultModel)
+            if (state.model.isNotBlank()) add(state.model)
+            addAll(modelItems.filter { it.isNotBlank() && it != state.model })
         }
     }
-    val modelSelectedIndex = modelOptions.indexOf(effectiveModel).coerceAtLeast(0)
 
     fun refreshModels() {
         val settings = state.toSettings()
@@ -108,7 +110,7 @@ fun AiSettingsScreen(
             ai.listModels(settings)
                 .onSuccess { models ->
                     modelItems = models
-                    if (models.isNotEmpty() && effectiveModel !in models) {
+                    if (models.isNotEmpty() && state.model.isNotBlank() && state.model !in models) {
                         onModelChange(models.first())
                     }
                 }
@@ -124,6 +126,7 @@ fun AiSettingsScreen(
 
     LaunchedEffect(state.providerId) {
         modelItems = emptyList()
+        apiKeyVisible = false
     }
 
     Column(
@@ -154,9 +157,22 @@ fun AiSettingsScreen(
             value = state.apiKey,
             onValueChange = onApiKeyChange,
             title = stringResource(R.string.ai_api_key),
-            inputMode = SettingInputMode.Password,
+            inputMode = if (apiKeyVisible) SettingInputMode.Text else SettingInputMode.Password,
             startAction = { SettingIcon(Icons.Filled.Key) },
             position = SettingCardPosition.Middle,
+            fieldEndAction = {
+                ThemeIconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
+                    ThemeIcon(
+                        imageVector = if (apiKeyVisible) {
+                            Icons.Filled.VisibilityOff
+                        } else {
+                            Icons.Filled.Visibility
+                        },
+                        contentDescription = if (apiKeyVisible) hideKeyLabel else showKeyLabel,
+                        tint = AnkioTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
             endAction = if (def.createKeyUri.isNotBlank()) {
                 {
                     ThemeIconButton(
@@ -173,12 +189,9 @@ fun AiSettingsScreen(
                 null
             },
         )
-        ThemeSettingComboField(
-            items = modelOptions,
-            selectedIndex = modelSelectedIndex,
-            onSelectedIndexChange = { index ->
-                modelOptions.getOrNull(index)?.let(onModelChange)
-            },
+        ThemeSettingTextField(
+            value = state.model,
+            onValueChange = onModelChange,
             title = stringResource(R.string.ai_model),
             summary = stringResource(R.string.ai_model_hint, def.defaultModel),
             placeholder = def.defaultModel,
@@ -186,6 +199,13 @@ fun AiSettingsScreen(
             position = SettingCardPosition.Last,
             enabled = !isRefreshingModels,
             fieldEndAction = {
+                SettingFieldListPopup(
+                    options = modelPopupOptions,
+                    onSelect = onModelChange,
+                    enabled = !isRefreshingModels,
+                )
+            },
+            endAction = {
                 ThemeIconButton(
                     onClick = { refreshModels() },
                     enabled = !isRefreshingModels,
@@ -250,6 +270,7 @@ fun AiSettingsScreen(
                                         onSave()
                                         onTestStateChange(AiTestUiState.Success)
                                     }
+
                                     is AiTestResult.Failure -> {
                                         val detail = result.message.ifBlank { "unknown" }
                                         onTestStateChange(
@@ -308,6 +329,7 @@ internal fun AiTestResultContent(
                 style = AnkioTheme.textStyles.body2,
                 color = AnkioTheme.colorScheme.onSurfaceVariant,
             )
+
             AiTestUiState.Running -> {
                 ThemeLinearProgressIndicator(Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
@@ -317,16 +339,19 @@ internal fun AiTestResultContent(
                     color = AnkioTheme.colorScheme.primary,
                 )
             }
+
             AiTestUiState.Success -> ThemeText(
                 text = successMessage,
                 style = AnkioTheme.textStyles.body2,
                 color = AnkioTheme.colorScheme.primary,
             )
+
             is AiTestUiState.Failure -> ThemeText(
                 text = testState.message,
                 style = AnkioTheme.textStyles.body2,
                 color = AnkioTheme.colorScheme.error,
             )
+
             AiTestUiState.Saved -> ThemeText(
                 text = savedMessage,
                 style = AnkioTheme.textStyles.body2,
