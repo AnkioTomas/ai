@@ -24,7 +24,6 @@ import net.ankio.ai.demo.store.AiSettingsStore
 import net.ankio.ai.demo.store.NoOpAiLogger
 import net.ankio.ai.lib.AI_DEFAULT_PROVIDER_ID
 import net.ankio.ai.lib.Ai
-import net.ankio.ai.lib.core.ProviderSettings
 import net.ankio.ai.lib.ui.settings.AiSettingsScreen
 import net.ankio.ai.lib.ui.settings.AiSettingsState
 import net.ankio.ai.lib.ui.settings.AiTestUiState
@@ -43,27 +42,20 @@ fun DemoMainScreen(
     val store = remember { AiSettingsStore(context) }
     val ai = remember(store) { Ai(store, NoOpAiLogger) }
 
-    var providerId by rememberSaveable { mutableStateOf(AI_DEFAULT_PROVIDER_ID) }
-    var apiKey by rememberSaveable { mutableStateOf("") }
-    var apiUri by rememberSaveable { mutableStateOf("") }
-    var model by rememberSaveable { mutableStateOf("") }
-    var visionEnabled by rememberSaveable { mutableStateOf(true) }
-    var testState by remember { mutableStateOf<AiTestUiState>(AiTestUiState.Idle) }
-    var loaded by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        providerId = ai.activeProviderId()
-        loaded = true
+    var settingsState by remember {
+        mutableStateOf(
+            AiSettingsState(providerId = AI_DEFAULT_PROVIDER_ID),
+        )
     }
 
-    LaunchedEffect(providerId, loaded) {
-        if (!loaded) return@LaunchedEffect
-        val saved = ai.settings(providerId)
-        apiKey = saved.apiKey
-        apiUri = saved.apiUri.orEmpty()
-        model = saved.model.orEmpty()
-        visionEnabled = saved.visionEnabled
-        testState = AiTestUiState.Idle
+    suspend fun loadProviderSettings(providerId: String) {
+        val def = ai.providers.first { it.id == providerId }
+        settingsState = AiSettingsState.from(def, ai.settings(providerId))
+            .copy(testState = AiTestUiState.Idle)
+    }
+
+    LaunchedEffect(Unit) {
+        loadProviderSettings(ai.activeProviderId())
     }
 
     Column(
@@ -76,43 +68,26 @@ fun DemoMainScreen(
                 DemoTab.Settings -> AiSettingsScreen(
                     ai = ai,
                     providers = ai.providers,
-                    state = AiSettingsState(
-                        providerId = providerId,
-                        apiKey = apiKey,
-                        apiUri = apiUri,
-                        model = model,
-                        visionEnabled = visionEnabled,
-                        testState = testState,
-                    ),
+                    state = settingsState,
                     onProviderChange = { id ->
                         scope.launch {
                             ai.switchProvider(id)
-                            providerId = id
-                            val saved = ai.settings(id)
-                            apiKey = saved.apiKey
-                            apiUri = saved.apiUri.orEmpty()
-                            model = saved.model.orEmpty()
-                            visionEnabled = saved.visionEnabled
-                            testState = AiTestUiState.Idle
+                            loadProviderSettings(id)
                         }
                     },
-                    onApiKeyChange = { apiKey = it },
-                    onApiUriChange = { apiUri = it },
-                    onModelChange = { model = it },
-                    onVisionEnabledChange = { visionEnabled = it },
+                    onApiKeyChange = { settingsState = settingsState.copy(apiKey = it) },
+                    onApiUriChange = { settingsState = settingsState.copy(apiUri = it) },
+                    onModelChange = { settingsState = settingsState.copy(model = it) },
+                    onVisionEnabledChange = {
+                        settingsState = settingsState.copy(visionEnabled = it)
+                    },
                     onSave = {
                         scope.launch {
-                            val settings = ProviderSettings(
-                                providerId = providerId,
-                                apiKey = apiKey.trim(),
-                                apiUri = apiUri.trim().ifBlank { null },
-                                model = model.trim().ifBlank { null },
-                                visionEnabled = visionEnabled,
-                            )
-                            ai.saveSettings(settings)
+                            val def = ai.providers.first { it.id == settingsState.providerId }
+                            ai.saveSettings(settingsState.toEffectiveSettings(def))
                         }
                     },
-                    onTestStateChange = { testState = it },
+                    onTestStateChange = { settingsState = settingsState.copy(testState = it) },
                     onOpenCreateKeyUri = { uri ->
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri)))
                     },
@@ -134,4 +109,3 @@ fun DemoMainScreen(
         }
     }
 }
-

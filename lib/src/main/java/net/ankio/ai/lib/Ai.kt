@@ -3,7 +3,9 @@ package net.ankio.ai.lib
 import net.ankio.ai.lib.core.AiDataStore
 import net.ankio.ai.lib.core.AiLogger
 import net.ankio.ai.lib.core.ProviderSettings
+import net.ankio.ai.lib.core.loadSettings
 import net.ankio.ai.lib.core.runCatchingExceptCancel
+import net.ankio.ai.lib.core.saveSettings
 import net.ankio.ai.lib.provider.AiCtx
 import net.ankio.ai.lib.provider.AiProviders
 import net.ankio.ai.lib.provider.ProviderBackend
@@ -35,8 +37,8 @@ class Ai(
     }
 
     suspend fun settings(providerId: String): ProviderSettings {
-        AiProviders.def(providerId)
-        return store.getSettings(providerId) ?: ProviderSettings(providerId = providerId)
+        val def = AiProviders.def(providerId)
+        return store.loadSettings(providerId).withProviderDefaults(def)
     }
 
     suspend fun saveSettings(settings: ProviderSettings) {

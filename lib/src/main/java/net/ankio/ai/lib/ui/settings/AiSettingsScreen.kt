@@ -100,7 +100,7 @@ fun AiSettingsScreen(
     }
 
     fun refreshModels() {
-        val settings = state.toSettings()
+        val settings = state.toEffectiveSettings(def)
         if (settings.apiKey.isBlank()) {
             onTestStateChange(AiTestUiState.Failure(invalidMessage))
             return
@@ -110,8 +110,10 @@ fun AiSettingsScreen(
             ai.listModels(settings)
                 .onSuccess { models ->
                     modelItems = models
-                    if (models.isNotEmpty() && state.model.isNotBlank() && state.model !in models) {
-                        onModelChange(models.first())
+                    if (models.isNotEmpty() && state.model !in models) {
+                        onModelChange(
+                            def.defaultModel.takeIf { it in models } ?: models.first(),
+                        )
                     }
                 }
                 .onFailure { error ->
@@ -243,7 +245,7 @@ fun AiSettingsScreen(
                 ) {
                     ThemeSecondaryButton(
                         onClick = {
-                            val settings = state.toSettings()
+                            val settings = state.toEffectiveSettings(def)
                             if (settings.apiKey.isBlank()) {
                                 onTestStateChange(AiTestUiState.Failure(invalidMessage))
                                 return@ThemeSecondaryButton
@@ -258,7 +260,7 @@ fun AiSettingsScreen(
                     ThemePrimaryButton(
                         onClick = {
                             if (state.isTesting) return@ThemePrimaryButton
-                            val settings = state.toSettings()
+                            val settings = state.toEffectiveSettings(def)
                             if (settings.apiKey.isBlank()) {
                                 onTestStateChange(AiTestUiState.Failure(invalidMessage))
                                 return@ThemePrimaryButton

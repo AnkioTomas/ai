@@ -21,13 +21,19 @@ data class AiSettingsState(
         visionEnabled = visionEnabled,
     )
 
+    /** 表单提交 / 测试 / 拉模型时使用，空白项回落到提供商默认 API、默认模型。 */
+    fun toEffectiveSettings(def: ProviderDef) = toSettings().withProviderDefaults(def)
+
     companion object {
-        fun from(def: ProviderDef, settings: ProviderSettings) = AiSettingsState(
-            providerId = settings.providerId,
-            apiKey = settings.apiKey,
-            apiUri = settings.apiUri.orEmpty(),
-            model = settings.model.orEmpty(),
-            visionEnabled = settings.visionEnabled,
-        )
+        fun from(def: ProviderDef, settings: ProviderSettings): AiSettingsState {
+            val resolved = settings.withProviderDefaults(def)
+            return AiSettingsState(
+                providerId = resolved.providerId,
+                apiKey = resolved.apiKey,
+                apiUri = resolved.apiUri.orEmpty(),
+                model = resolved.model.orEmpty(),
+                visionEnabled = resolved.visionEnabled,
+            )
+        }
     }
 }
