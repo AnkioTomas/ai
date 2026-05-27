@@ -3,8 +3,6 @@ package net.ankio.ai.lib.provider
 import net.ankio.ai.lib.core.AiLogger
 import net.ankio.ai.lib.core.ProviderSettings
 import net.ankio.ai.lib.core.formatLogError
-import net.ankio.ai.lib.core.sanitizeCredential
-import net.ankio.ai.lib.core.sanitizeSingleLine
 import net.ankio.ai.lib.provider.AiProviders.DEFAULT_ID
 import net.ankio.ai.lib.provider.gemini.GeminiBackend
 import net.ankio.ai.lib.provider.openai.OpenAiBackend
@@ -44,19 +42,19 @@ internal data class AiCtx(
     val settings: ProviderSettings,
     val logger: AiLogger,
     val userAgent: String,
+    /** 全局 HTTP/SOCKS 代理；空字符串表示直连。 */
+    val proxy: String = "",
 ) {
-    /** 当前请求的 API Key（已去除非法换行）。 */
-    val apiKey get() = settings.apiKey.sanitizeCredential()
+    /** 当前请求的 API Key。 */
+    val apiKey get() = settings.apiKey
 
     /** 生效的 API 根地址（自定义优先，否则 [ProviderDef.defaultApiUri]）。 */
     val apiUri
         get() =
-            (settings.apiUri?.takeIf { it.isNotBlank() } ?: def.defaultApiUri).sanitizeSingleLine()
+            settings.apiUri?.takeIf { it.isNotBlank() } ?: def.defaultApiUri
 
     /** 生效的模型名（自定义优先，否则 [ProviderDef.defaultModel]）。 */
-    val model
-        get() =
-            (settings.model?.takeIf { it.isNotBlank() } ?: def.defaultModel).sanitizeSingleLine()
+    val model get() = settings.model?.takeIf { it.isNotBlank() } ?: def.defaultModel
 
     /** 是否启用视觉。 */
     val visionEnabled get() = settings.visionEnabled

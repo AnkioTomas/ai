@@ -1,8 +1,6 @@
 package net.ankio.ai.lib.ui.settings
 
 import net.ankio.ai.lib.core.ProviderSettings
-import net.ankio.ai.lib.core.sanitizeCredential
-import net.ankio.ai.lib.core.sanitizeSingleLine
 import net.ankio.ai.lib.provider.ProviderDef
 
 /**
@@ -14,6 +12,7 @@ import net.ankio.ai.lib.provider.ProviderDef
  * @param model 模型名输入框内容。
  * @param visionEnabled 是否启用视觉识别。
  * @param temperature 采样温度，范围建议 `0.0`～`2.0`。
+ * @param proxy 全局 HTTP/SOCKS 代理；空字符串表示直连。
  * @param testState 连接测试结果展示状态。
  */
 data class AiSettingsState(
@@ -23,6 +22,7 @@ data class AiSettingsState(
     val model: String = "",
     val visionEnabled: Boolean = true,
     val temperature: Double = ProviderSettings.DEFAULT_TEMPERATURE,
+    val proxy: String = "",
     val testState: AiTestUiState = AiTestUiState.Idle,
 ) {
     /** 是否正在执行连接测试。 */
@@ -36,9 +36,9 @@ data class AiSettingsState(
      */
     fun toSettings() = ProviderSettings(
         providerId = providerId,
-        apiKey = apiKey.sanitizeCredential(),
-        apiUri = apiUri.sanitizeSingleLine().ifBlank { null },
-        model = model.sanitizeSingleLine().ifBlank { null },
+        apiKey = apiKey,
+        apiUri = apiUri.ifBlank { null },
+        model = model.ifBlank { null },
         visionEnabled = visionEnabled,
         temperature = temperature,
     )
@@ -57,15 +57,20 @@ data class AiSettingsState(
          * @param def 当前提供商定义。
          * @param settings 自 [net.ankio.ai.lib.Ai.settings] 或存储读取的配置。
          */
-        fun from(def: ProviderDef, settings: ProviderSettings): AiSettingsState {
+        fun from(
+            def: ProviderDef,
+            settings: ProviderSettings,
+            proxy: String = "",
+        ): AiSettingsState {
             val resolved = settings.withProviderDefaults(def)
             return AiSettingsState(
                 providerId = resolved.providerId,
-                apiKey = resolved.apiKey.sanitizeCredential(),
-                apiUri = resolved.apiUri.orEmpty().sanitizeSingleLine(),
-                model = resolved.model.orEmpty().sanitizeSingleLine(),
+                apiKey = resolved.apiKey,
+                apiUri = resolved.apiUri.orEmpty(),
+                model = resolved.model.orEmpty(),
                 visionEnabled = resolved.visionEnabled,
                 temperature = resolved.temperature,
+                proxy = proxy,
             )
         }
     }

@@ -43,7 +43,7 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
             .get()
             .build()
         runCatchingExceptCancel {
-            AiHttp.client.newCall(request).execute().use { response ->
+            AiHttp.client(ctx.proxy).newCall(request).execute().use { response ->
                 val body = response.body?.string() ?: error("Empty body")
                 if (!response.isSuccessful) error("HTTP ${response.code}: $body")
                 json.decodeBody(body, GeminiModelsResponse.serializer()).models.map { it.name }
@@ -78,7 +78,7 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
         val respSer = GeminiGenerateResponse.serializer()
 
         runCatchingExceptCancel {
-            AiHttp.client.newCall(request).execute().use { response ->
+            AiHttp.client(ctx.proxy).newCall(request).execute().use { response ->
                 if (!response.isSuccessful) error("HTTP ${response.code}: ${response.body?.string()}")
                 val body = response.body?.string()?.removeThink() ?: error("Empty body")
                 parse(body, respSer) ?: error("Empty AI response")
@@ -110,7 +110,7 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
         val respSer = GeminiGenerateResponse.serializer()
 
         runCatchingExceptCancel {
-            AiHttp.client.newCall(request).execute().use { response ->
+            AiHttp.client(ctx.proxy).newCall(request).execute().use { response ->
                 if (!response.isSuccessful) error("HTTP ${response.code}: ${response.body?.string()}")
                 var chunks = 0
                 response.body?.source()?.let { source ->

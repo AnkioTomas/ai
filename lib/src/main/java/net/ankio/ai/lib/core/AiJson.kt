@@ -21,13 +21,36 @@ object AiJson {
     }
 }
 
-/** 模块内共享的 OkHttp 客户端（长超时，供各 Backend 使用）。 */
+/** 模块内共享的 OkHttp 客户端（长超时，供各 Backend 使用；按代理配置缓存实例）。 */
 internal object AiHttp {
-    val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.MINUTES)
-        .writeTimeout(5, TimeUnit.MINUTES)
-        .readTimeout(5, TimeUnit.MINUTES)
-        .build()
+    @Volatile
+    private var cachedClient: OkHttpClient = buildClient("")
+
+    @Volatile
+    private var cachedProxyKey: String = ""
+
+    fun client(proxySpec: String): OkHttpClient {
+        val key = proxySpec.trim()
+        if (key == cachedProxyKey) return cachedClient
+        synchronized(this) {
+            if (key == cachedProxyKey) return cachedClient
+            cachedClient = buildClient(key)
+            cachedProxyKey = key
+            return cachedClient
+        }
+    }
+
+    private fun buildClient(proxySpec: String): OkHttpClient {
+        val builder = OkHttpClient.Builder()
+            .connectTimeout(5, TimeUnit.MINUTES)
+            .writeTimeout(5, TimeUnit.MINUTES)
+            .readTimeout(5, TimeUnit.MINUTES)
+        parseProxySpec(proxySpec)?.let { parsed ->
+            builder.proxy(parsed.proxy)
+            parsed.authenticator?.let { builder.proxyAuthenticator(it) }
+        }
+        return builder.build()
+    }
 }
 
 /**

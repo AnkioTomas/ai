@@ -15,6 +15,7 @@ import net.ankio.ai.lib.core.ProviderSettings
 internal class InMemoryAiDataStore(
     private var activeProviderId: String = AI_DEFAULT_PROVIDER_ID,
     private val settingsByProvider: MutableMap<String, ProviderSettings> = mutableMapOf(),
+    private var proxy: String = "",
 ) : AiDataStore {
 
     override suspend fun getActiveProviderId(): String = activeProviderId
@@ -56,6 +57,12 @@ internal class InMemoryAiDataStore(
 
     override suspend fun setTemperature(providerId: String, temperature: Double) {
         update(providerId) { it.copy(temperature = temperature) }
+    }
+
+    override suspend fun getProxy(): String = proxy
+
+    override suspend fun setProxy(proxy: String) {
+        this.proxy = proxy
     }
 
     /** 更新指定 provider 的配置块。 */

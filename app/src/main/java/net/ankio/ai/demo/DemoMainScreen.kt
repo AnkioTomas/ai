@@ -50,7 +50,7 @@ fun DemoMainScreen(
 
     suspend fun loadProviderSettings(providerId: String) {
         val def = ai.providers.first { it.id == providerId }
-        settingsState = AiSettingsState.from(def, ai.settings(providerId))
+        settingsState = AiSettingsState.from(def, ai.settings(providerId), ai.proxy())
             .copy(testState = AiTestUiState.Idle)
     }
 
@@ -85,10 +85,12 @@ fun DemoMainScreen(
                     onTemperatureChange = {
                         settingsState = settingsState.copy(temperature = it)
                     },
+                    onProxyChange = { settingsState = settingsState.copy(proxy = it) },
                     onSave = {
                         scope.launch {
                             val def = ai.providers.first { it.id == settingsState.providerId }
                             ai.saveSettings(settingsState.toEffectiveSettings(def))
+                            ai.saveProxy(settingsState.proxy)
                         }
                     },
                     onTestStateChange = { settingsState = settingsState.copy(testState = it) },

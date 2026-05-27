@@ -90,6 +90,15 @@ class Ai(
         store.saveSettings(settings)
     }
 
+    /** 读取全局网络代理；空字符串表示直连。 */
+    suspend fun proxy(): String = store.getProxy()
+
+    /** 保存全局网络代理；传空字符串表示直连。 */
+    suspend fun saveProxy(proxy: String) {
+        logD("network", "saveProxy enabled=${proxy.isNotBlank()}")
+        store.setProxy(proxy)
+    }
+
     /**
      * 使用给定配置探测连接，不读写 [store]。
      *
@@ -134,8 +143,8 @@ class Ai(
             image = "",
         ).mapCatching { body ->
             val reply = body.trim()
-            if (reply.isEmpty()) error("AI 返回为空")
-            if (!reply.contains("连通")) error("未收到连通确认：$reply")
+            if (reply.isEmpty()) error("Empty AI response")
+            if (!reply.contains("连通")) error("Connectivity check failed: $reply")
         }
 
     /** 视觉连通性探测：要求模型能读取测试图中的 AUTO TEST 文字。 */
@@ -148,10 +157,10 @@ class Ai(
             image = AiTestDemo.IMAGE_BASE64,
         ).mapCatching { body ->
             val reply = body.trim()
-            if (reply.isEmpty()) error("AI 返回为空")
+            if (reply.isEmpty()) error("Empty AI response")
             val canRead = reply.contains("可以读取") ||
                 listOf("AUTO", "TEST").all { reply.contains(it, ignoreCase = true) }
-            if (!canRead) error("无法读取测试图片：$reply")
+            if (!canRead) error("Vision test failed: $reply")
         }
 
     /**
@@ -242,7 +251,7 @@ class Ai(
     /** 组装单次请求的上下文（含解析后的 apiUri、model）。 */
     private suspend fun ctx(providerId: String?): AiCtx {
         val id = providerId ?: activeProviderId()
-        return AiCtx(AiProviders.def(id), settings(id), logger, userAgent)
+        return AiCtx(AiProviders.def(id), settings(id), logger, userAgent, proxy())
     }
 
     /** 解析目标提供商的后端实现。 */
@@ -270,8 +279,8 @@ class Ai(
     ) {
         ctx.logD(
             "chat start stream=$stream model=${ctx.model} temp=${ctx.temperature} " +
-                    "vision=${ctx.visionEnabled} image=${image.isNotBlank()} " +
-                    "userLen=$userLen systemLen=$systemLen",
+                    "vision=${ctx.visionEnabled} proxy=${ctx.proxy.isNotBlank()} " +
+                    "image=${image.isNotBlank()} userLen=$userLen systemLen=$systemLen",
         )
     }
 

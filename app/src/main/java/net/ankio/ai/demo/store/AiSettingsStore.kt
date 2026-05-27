@@ -5,7 +5,6 @@ import androidx.core.content.edit
 import net.ankio.ai.lib.AI_DEFAULT_PROVIDER_ID
 import net.ankio.ai.lib.core.AiDataStore
 import net.ankio.ai.lib.core.ProviderSettings
-import net.ankio.ai.lib.core.sanitizeCredential
 
 /** Demo：SharedPreferences 实现的 [AiDataStore]，按字段存储，不做 JSON 序列化。 */
 class AiSettingsStore(context: Context) : AiDataStore {
@@ -23,7 +22,7 @@ class AiSettingsStore(context: Context) : AiDataStore {
         prefs.getString(key(providerId, SUFFIX_API_KEY), "") ?: ""
 
     override suspend fun setApiKey(providerId: String, apiKey: String) {
-        prefs.edit { putString(key(providerId, SUFFIX_API_KEY), apiKey.sanitizeCredential()) }
+        prefs.edit { putString(key(providerId, SUFFIX_API_KEY), apiKey) }
     }
 
     override suspend fun getApiUri(providerId: String): String? =
@@ -66,11 +65,19 @@ class AiSettingsStore(context: Context) : AiDataStore {
         prefs.edit { putFloat(key(providerId, SUFFIX_TEMPERATURE), temperature.toFloat()) }
     }
 
+    override suspend fun getProxy(): String =
+        prefs.getString(KEY_PROXY, "") ?: ""
+
+    override suspend fun setProxy(proxy: String) {
+        prefs.edit { putString(KEY_PROXY, proxy) }
+    }
+
     private fun key(providerId: String, suffix: String) = "settings_${providerId}_$suffix"
 
     private companion object {
         const val PREFS = "net.ankio.ai.settings"
         const val KEY_ACTIVE = "active_provider"
+        const val KEY_PROXY = "network_proxy"
         const val SUFFIX_API_KEY = "api_key"
         const val SUFFIX_API_URI = "api_uri"
         const val SUFFIX_MODEL = "model"

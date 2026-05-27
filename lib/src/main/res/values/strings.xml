@@ -5,6 +5,9 @@
     <string name="ai_api_key">API Key</string>
     <string name="ai_api_uri">API URL</string>
     <string name="ai_api_uri_hint">Leave blank for default: %1$s</string>
+    <string name="ai_proxy">Network proxy</string>
+    <string name="ai_proxy_summary">Applies to all providers. Leave blank for direct connection.</string>
+    <string name="ai_proxy_placeholder">127.0.0.1:7890</string>
     <string name="ai_model">Model</string>
     <string name="ai_model_hint">Leave blank for default: %1$s</string>
     <string name="ai_vision_enabled">Enable vision</string>

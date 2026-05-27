@@ -37,7 +37,7 @@ internal class OpenAiBackend(
     override suspend fun models(ctx: AiCtx): List<String> {
         def.staticModels?.let { return it }
         if (def.modelsPath.isBlank()) return emptyList()
-        ctx.logD("获取模型列表")
+        ctx.logD("fetch models")
         val request = Request.Builder()
             .url("${ctx.apiUri.trimEnd('/')}${def.modelsPath}")
             .addHeader("Authorization", "Bearer ${ctx.apiKey}")
@@ -45,7 +45,7 @@ internal class OpenAiBackend(
             .build()
         return withContext(Dispatchers.IO) {
             runCatchingExceptCancel {
-                AiHttp.client.newCall(request).execute().use { response ->
+                AiHttp.client(ctx.proxy).newCall(request).execute().use { response ->
                     val body = response.body?.string() ?: error("Empty body")
                     if (!response.isSuccessful) error("HTTP ${response.code}: $body")
                     json.decodeBody(body, ModelsListResponse.serializer()).data.map { it.id }
@@ -81,7 +81,7 @@ internal class OpenAiBackend(
         ctx.logD("POST ${def.chatPath} stream=false messages=${body.messages.size}")
         return withContext(Dispatchers.IO) {
             runCatchingExceptCancel {
-                AiHttp.client.newCall(request).execute().use { response ->
+                AiHttp.client(ctx.proxy).newCall(request).execute().use { response ->
                     val text = response.body?.string()?.removeThink() ?: error("Empty body")
                     if (!response.isSuccessful) {
                         error(
@@ -127,7 +127,7 @@ internal class OpenAiBackend(
 
     /** 解析 SSE `data:` 行并回调增量文本（须在 IO 线程调用）。 */
     private suspend fun stream(ctx: AiCtx, request: Request, onChunk: (String) -> Unit) {
-        AiHttp.client.newCall(request).execute().use { response ->
+        AiHttp.client(ctx.proxy).newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 val errBody = response.body?.string().orEmpty()
                 error("HTTP ${response.code}: $errBody")

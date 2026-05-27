@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.VpnLock
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,7 +39,6 @@ import net.ankio.ai.lib.Ai
 import net.ankio.ai.lib.R
 import net.ankio.ai.lib.core.ProviderSettings
 import net.ankio.ai.lib.core.displayMessage
-import net.ankio.ai.lib.core.sanitizeCredential
 import net.ankio.ai.lib.provider.ProviderDef
 import net.ankio.ai.lib.test.AiTest
 import net.ankio.ai.lib.test.AiTestResult
@@ -74,6 +74,7 @@ import kotlin.math.round
  * @param onModelChange 模型名变更。
  * @param onVisionEnabledChange 视觉开关变更。
  * @param onTemperatureChange 采样温度变更（`0.0`～`2.0`）。
+ * @param onProxyChange 网络代理变更（全局，对所有提供商生效）。
  * @param onSave 点击保存。
  * @param onTestStateChange 测试/保存结果状态更新。
  * @param onOpenCreateKeyUri 打开申请 Key 外链（非空 [ProviderDef.createKeyUri] 时显示按钮）。
@@ -90,6 +91,7 @@ fun AiSettingsScreen(
     onModelChange: (String) -> Unit,
     onVisionEnabledChange: (Boolean) -> Unit,
     onTemperatureChange: (Double) -> Unit,
+    onProxyChange: (String) -> Unit,
     onSave: () -> Unit,
     onTestStateChange: (AiTestUiState) -> Unit,
     modifier: Modifier = Modifier,
@@ -121,6 +123,11 @@ fun AiSettingsScreen(
     val refreshModelsEmptyMessage = stringResource(R.string.ai_refresh_models_empty)
     val showKeyLabel = stringResource(R.string.ai_show_api_key)
     val hideKeyLabel = stringResource(R.string.ai_hide_api_key)
+    val proxyPlaceholder = stringResource(R.string.ai_proxy_placeholder)
+
+    suspend fun persistProxy() {
+        ai.saveProxy(state.proxy)
+    }
 
     val modelPopupOptions = remember(modelItems, state.model) {
         buildList {
@@ -138,6 +145,7 @@ fun AiSettingsScreen(
         scope.launch {
             isRefreshingModels = true
             onTestStateChange(AiTestUiState.RefreshingModels)
+            persistProxy()
             ai.listModels(settings)
                 .onSuccess { models ->
                     modelItems = models
@@ -209,7 +217,7 @@ fun AiSettingsScreen(
         )
         ThemeSettingTextField(
             value = state.apiKey,
-            onValueChange = { onApiKeyChange(it.sanitizeCredential()) },
+            onValueChange = onApiKeyChange,
             title = stringResource(R.string.ai_api_key),
             inputMode = if (apiKeyVisible) SettingInputMode.Text else SettingInputMode.Password,
             startAction = { SettingIcon(Icons.Filled.Key) },
@@ -247,7 +255,6 @@ fun AiSettingsScreen(
             value = state.model,
             onValueChange = onModelChange,
             title = stringResource(R.string.ai_model),
-            summary = stringResource(R.string.ai_model_hint, def.defaultModel),
             placeholder = def.defaultModel,
             startAction = { SettingIcon(Icons.Filled.SmartToy) },
             position = SettingCardPosition.Middle,
@@ -286,7 +293,7 @@ fun AiSettingsScreen(
             steps = AI_TEMPERATURE_STEPS,
             valueLabel = stringResource(R.string.ai_temperature_value, temperatureValue),
             startAction = { SettingIcon(Icons.Filled.Tune) },
-            position = SettingCardPosition.Last,
+            position = SettingCardPosition.Middle,
         )
 
         ThemeSettingSwitch(
@@ -294,7 +301,16 @@ fun AiSettingsScreen(
             checked = state.visionEnabled,
             onCheckedChange = onVisionEnabledChange,
             startAction = { SettingIcon(Icons.Filled.Visibility) },
-            position = SettingCardPosition.Single,
+            position = SettingCardPosition.Middle,
+        )
+        ThemeSettingTextField(
+            value = state.proxy,
+            onValueChange = onProxyChange,
+            title = stringResource(R.string.ai_proxy),
+            summary = stringResource(R.string.ai_proxy_summary),
+            placeholder = proxyPlaceholder,
+            startAction = { SettingIcon(Icons.Filled.VpnLock) },
+            position = SettingCardPosition.Last,
         )
 
         ThemeCard(
@@ -335,6 +351,7 @@ fun AiSettingsScreen(
                             }
                             scope.launch {
                                 onTestStateChange(AiTestUiState.Running)
+                                persistProxy()
                                 when (val result = AiTest.run(ai, settings)) {
                                     AiTestResult.Success -> {
                                         onSave()

@@ -6,6 +6,7 @@ package net.ankio.ai.lib.core
  * lib 不提供默认实现，且**不得**在实现层对配置做 JSON/序列化整包存储；
  * 应按字段分别读写（见各 `get*` / `set*`）。
  * 切换提供商只改 [setActiveProviderId]，各 [providerId] 的配置独立保存。
+ * [getProxy] / [setProxy] 为全局网络代理，对所有提供商生效。
  */
 interface AiDataStore {
     /** 当前激活的提供商 id。 */
@@ -43,4 +44,10 @@ interface AiDataStore {
 
     /** 保存采样温度。 */
     suspend fun setTemperature(providerId: String, temperature: Double)
+
+    /** 读取全局 HTTP/SOCKS 代理；空字符串表示直连。 */
+    suspend fun getProxy(): String
+
+    /** 保存全局代理；传空字符串表示清除（直连）。 */
+    suspend fun setProxy(proxy: String)
 }

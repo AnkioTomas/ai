@@ -5,6 +5,9 @@
     <string name="ai_api_key">API Key</string>
     <string name="ai_api_uri">API 地址</string>
     <string name="ai_api_uri_hint">留空使用默认：%1$s</string>
+    <string name="ai_proxy">网络代理</string>
+    <string name="ai_proxy_summary">对所有提供商生效，留空则直连</string>
+    <string name="ai_proxy_placeholder">127.0.0.1:7890</string>
     <string name="ai_model">模型</string>
     <string name="ai_model_hint">留空使用默认：%1$s</string>
     <string name="ai_vision_enabled">启用视觉识别</string>
