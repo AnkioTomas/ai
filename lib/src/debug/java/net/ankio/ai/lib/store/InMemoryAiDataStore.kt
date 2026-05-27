@@ -51,6 +51,13 @@ internal class InMemoryAiDataStore(
         update(providerId) { it.copy(visionEnabled = enabled) }
     }
 
+    override suspend fun getTemperature(providerId: String): Double =
+        settingsByProvider[providerId]?.temperature ?: ProviderSettings.DEFAULT_TEMPERATURE
+
+    override suspend fun setTemperature(providerId: String, temperature: Double) {
+        update(providerId) { it.copy(temperature = temperature) }
+    }
+
     /** 更新指定 provider 的配置块。 */
     private fun update(providerId: String, transform: (ProviderSettings) -> ProviderSettings) {
         val current = settingsByProvider[providerId] ?: ProviderSettings(providerId = providerId)

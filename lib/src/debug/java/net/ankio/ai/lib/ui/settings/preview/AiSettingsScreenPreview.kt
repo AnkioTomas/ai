@@ -28,6 +28,7 @@ private fun AiSettingsScreenPreview(
             onApiUriChange = {},
             onModelChange = {},
             onVisionEnabledChange = {},
+            onTemperatureChange = {},
             onSave = {},
             onTestStateChange = {},
         )
