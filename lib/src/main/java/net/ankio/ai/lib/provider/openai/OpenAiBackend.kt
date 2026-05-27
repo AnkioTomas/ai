@@ -64,7 +64,7 @@ internal class OpenAiBackend(
         val body = ChatCompletionRequest(
             model = ctx.model,
             messages = ChatMessageFactory.build(system, user, image),
-            temperature = 0.7,
+            temperature = ctx.temperature,
             stream = if (onChunk != null) true else null,
         )
         val request = Request.Builder()

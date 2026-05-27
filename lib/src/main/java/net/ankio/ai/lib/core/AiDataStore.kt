@@ -37,4 +37,10 @@ interface AiDataStore {
 
     /** 设置指定提供商是否启用视觉识别。 */
     suspend fun setVisionEnabled(providerId: String, enabled: Boolean)
+
+    /** 读取采样温度；未配置时由实现返回 [ProviderSettings.DEFAULT_TEMPERATURE]。 */
+    suspend fun getTemperature(providerId: String): Double
+
+    /** 保存采样温度。 */
+    suspend fun setTemperature(providerId: String, temperature: Double)
 }

@@ -14,6 +14,7 @@ suspend fun AiDataStore.loadSettings(providerId: String): ProviderSettings =
         apiUri = getApiUri(providerId),
         model = getModel(providerId),
         visionEnabled = getVisionEnabled(providerId),
+        temperature = getTemperature(providerId),
     )
 
 /**
@@ -27,4 +28,5 @@ suspend fun AiDataStore.saveSettings(settings: ProviderSettings) {
     setApiUri(id, settings.apiUri)
     setModel(id, settings.model)
     setVisionEnabled(id, settings.visionEnabled)
+    setTemperature(id, settings.temperature)
 }

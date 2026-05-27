@@ -11,6 +11,7 @@ import net.ankio.ai.lib.core.runCatchingExceptCancel
 import net.ankio.ai.lib.core.userAgent
 import net.ankio.ai.lib.model.gemini.GeminiGenerateRequest
 import net.ankio.ai.lib.model.gemini.GeminiGenerateResponse
+import net.ankio.ai.lib.model.gemini.GeminiGenerationConfig
 import net.ankio.ai.lib.model.gemini.GeminiModelsResponse
 import net.ankio.ai.lib.model.gemini.GeminiRequestFactory
 import net.ankio.ai.lib.model.gemini.firstText
@@ -60,13 +61,14 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
         onChunk: ((String) -> Unit)?,
     ): Result<String> = withContext(Dispatchers.IO) {
         val path = if (onChunk == null) "generateContent" else "streamGenerateContent?alt=sse"
+        val generationConfig = GeminiGenerationConfig(temperature = ctx.temperature)
         val request = Request.Builder()
             .url("${baseUri(ctx)}/${ctx.model}:$path")
             .userAgent(ctx)
             .postJson(
                 json,
                 GeminiGenerateRequest.serializer(),
-                GeminiRequestFactory.build(system, user, image),
+                GeminiRequestFactory.build(system, user, image, generationConfig),
             )
             .addHeader("x-goog-api-key", ctx.apiKey)
             .addHeader("Content-Type", "application/json")

@@ -20,6 +20,8 @@ data class ProviderSettings(
     val model: String? = null,
     /** 是否允许附带图片进行视觉识别。 */
     val visionEnabled: Boolean = true,
+    /** 采样温度；越高越发散，常见范围 `0.0`～`2.0`。 */
+    val temperature: Double = DEFAULT_TEMPERATURE,
 ) {
     /**
      * 用提供商元数据补全未保存的 [apiUri]、[model]。
@@ -32,4 +34,12 @@ data class ProviderSettings(
         apiUri = apiUri?.takeIf { it.isNotBlank() } ?: def.defaultApiUri.takeIf { it.isNotBlank() },
         model = model?.takeIf { it.isNotBlank() } ?: def.defaultModel.takeIf { it.isNotBlank() },
     )
+
+    companion object {
+        /** 常规对话默认温度。 */
+        const val DEFAULT_TEMPERATURE: Double = 0.7
+
+        /** 连接测试等场景：尽量确定性输出。 */
+        const val TEST_TEMPERATURE: Double = 0.0
+    }
 }

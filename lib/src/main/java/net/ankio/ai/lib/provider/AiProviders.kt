@@ -54,6 +54,9 @@ internal data class AiCtx(
     /** 是否启用视觉。 */
     val visionEnabled get() = settings.visionEnabled
 
+    /** 本次请求使用的采样温度（来自 [ProviderSettings]）。 */
+    val temperature get() = settings.temperature
+
     /** 日志标签 `Ai/{id}`。 */
     val tag get() = "Ai/${def.id}"
 
