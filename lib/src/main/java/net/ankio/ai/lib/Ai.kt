@@ -34,9 +34,51 @@ class Ai(
         store.saveSettings(settings)
     }
 
-    /** 用指定配置探测连接（拉取模型列表），不读写 DataStore。 */
-    suspend fun testConnection(settings: ProviderSettings): Result<Unit> =
-        listModels(settings).map { }
+    /** 用指定配置探测连接：未启用视觉时验证文本连通；启用视觉时用 demo 图验证可读性。不读写 DataStore。 */
+    suspend fun testConnection(settings: ProviderSettings): Result<Unit> {
+        AiProviders.def(settings.providerId)
+        val ctx = AiCtx(
+            AiProviders.def(settings.providerId),
+            settings,
+            logger,
+            userAgent,
+        )
+        val backend = AiProviders.backend(settings.providerId)
+        return if (settings.visionEnabled) {
+            testVisionConnection(backend, ctx)
+        } else {
+            testTextConnection(backend, ctx)
+        }
+    }
+
+    private suspend fun testTextConnection(backend: ProviderBackend, ctx: AiCtx): Result<Unit> =
+        backend.chat(
+            ctx,
+            system = "",
+            user = "请仅回复一个词：连通",
+            image = "",
+            onChunk = null,
+        ).mapCatching { body ->
+            val reply = body.trim()
+            if (reply.isEmpty()) error("AI 返回为空")
+            if (!reply.contains("连通")) error("未收到连通确认：$reply")
+        }
+
+    private suspend fun testVisionConnection(backend: ProviderBackend, ctx: AiCtx): Result<Unit> =
+        backend.chat(
+            ctx,
+            system = "",
+            user = "这是一张连接测试图片，图中文字为「AUTO TEST」。请判断你能否读取图片中的文字。" +
+                "若能读取，请回复「可以读取」并简要说明你看到的文字。",
+            image = AiTestDemo.IMAGE_BASE64,
+            onChunk = null,
+        ).mapCatching { body ->
+            val reply = body.trim()
+            if (reply.isEmpty()) error("AI 返回为空")
+            val canRead = reply.contains("可以读取") ||
+                listOf("AUTO", "TEST").all { reply.contains(it, ignoreCase = true) }
+            if (!canRead) error("无法读取测试图片：$reply")
+        }
 
     /** 用当前表单配置拉取模型列表，不读写 DataStore。 */
     suspend fun listModels(settings: ProviderSettings): Result<List<String>> {

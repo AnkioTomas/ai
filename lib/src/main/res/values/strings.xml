@@ -14,7 +14,9 @@
     <string name="ai_save">Save</string>
     <string name="ai_test">Test connection</string>
     <string name="ai_test_running">Testing connection…</string>
+    <string name="ai_test_running_vision">Testing vision…</string>
     <string name="ai_test_success">Connected. Settings saved automatically.</string>
+    <string name="ai_test_success_vision">Vision works. Settings saved automatically.</string>
     <string name="ai_test_failed">Connection failed: %1$s</string>
     <string name="ai_saved">Settings saved</string>
     <string name="ai_config_invalid">Please enter API Key</string>

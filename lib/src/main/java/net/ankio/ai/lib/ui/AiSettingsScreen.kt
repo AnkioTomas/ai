@@ -76,8 +76,12 @@ fun AiSettingsScreen(
     var isRefreshingModels by remember { mutableStateOf(false) }
 
     val invalidMessage = stringResource(R.string.ai_config_invalid)
-    val testingMessage = stringResource(R.string.ai_test_running)
-    val successMessage = stringResource(R.string.ai_test_success)
+    val testingMessage = stringResource(
+        if (state.visionEnabled) R.string.ai_test_running_vision else R.string.ai_test_running,
+    )
+    val successMessage = stringResource(
+        if (state.visionEnabled) R.string.ai_test_success_vision else R.string.ai_test_success,
+    )
     val failedTemplate = stringResource(R.string.ai_test_failed)
     val savedMessage = stringResource(R.string.ai_saved)
     val refreshModelsMessage = stringResource(R.string.ai_refresh_models)
