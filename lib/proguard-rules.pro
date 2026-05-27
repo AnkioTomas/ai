@@ -1,21 +1,9 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# lib 模块本地 release 构建（若开启 isMinifyEnabled）时与 consumer 共用策略。
+# 发布到 JitPack 的 AAR 默认不混淆；宿主 release 合并 consumer-rules.pro。
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+-include consumer-rules.pro
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# 允许混淆内部实现，仅保留对外契约（见 consumer-rules.pro）
+-keep,allowobfuscation class net.ankio.ai.lib.provider.** { *; }
+-keep,allowobfuscation class net.ankio.ai.lib.core.AiJson { *; }
+-keep,allowobfuscation class net.ankio.ai.lib.core.AiHttp { *; }

@@ -1,21 +1,12 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Demo App — release R8 规则（lib 的 consumer-rules.pro 会自动合并）
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Application / Activity / 宿主 DataStore 实现
+-keep class net.ankio.ai.demo.DemoApp { *; }
+-keep class net.ankio.ai.demo.MainActivity { *; }
+-keep class net.ankio.ai.demo.store.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Demo UI（Compose 入口与 Tab）
+-keep class net.ankio.ai.demo.** { *; }

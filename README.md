@@ -184,6 +184,51 @@ ai.requestStream(
 }
 ```
 
+## R8 混淆
+
+### 库（`lib`）
+
+- 通过 `consumerProguardFiles("consumer-rules.pro")` 将规则随 AAR 合并到宿主 **release** 构建。
+- 保留对外 API（`Ai`、`AiDataStore`、`ProviderSettings`、`AiSettingsScreen` 等）、`kotlinx.serialization`
+  模型与 `MessageContentSerializer`；内部 Backend 可在宿主 R8 中继续收缩/混淆。
+- **不要**在 `consumer-rules.pro` 里写 `-renamesourcefileattribute` 等全局选项（AGP 会拒绝）；行号映射请在宿主
+  `proguard-rules.pro` 配置。
+
+### 宿主 App
+
+release 建议开启：
+
+```kotlin
+buildTypes {
+    release {
+        isMinifyEnabled = true
+        isShrinkResources = true
+        proguardFiles(
+            getDefaultProguardFile("proguard-android-optimize.txt"),
+            "proguard-rules.pro",
+        )
+    }
+}
+```
+
+宿主 `proguard-rules.pro` 示例（堆栈可读 + 自有实现类）：
+
+```proguard
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+-keep class * implements net.ankio.ai.lib.core.AiDataStore { *; }
+-keep class * implements net.ankio.ai.lib.core.AiLogger { *; }
+```
+
+Demo 已启用 R8，可参考 `app/proguard-rules.pro`。映射文件：`app/build/outputs/mapping/release/`。
+
+验证：
+
+```bash
+./gradlew :app:assembleRelease
+```
+
 ## 发布（JitPack）
 
 本仓库通过 `jitpack.yml` 指定 JitPack 构建步骤：
