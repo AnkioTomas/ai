@@ -4,13 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Key
@@ -63,60 +60,41 @@ import kotlin.math.round
 /**
  * AI 提供商配置 Compose 页面。
  *
- * 包含：提供商下拉、API 地址、API Key（可切换明文）、模型（可刷新列表 + Popup 选择）、
- * 视觉开关、保存与测试连接。
+ * 内部维护表单状态与模型列表缓存，通过 [ai] 读写 [net.ankio.ai.lib.core.AiDataStore]。
+ * 滚动由宿主在外层 [Modifier] 上提供（例如 `verticalScroll`）。
  *
- * @param ai [Ai] 实例，用于拉模型与测试。
+ * @param ai [Ai] 实例（已注入 DataStore）。
  * @param providers 可选提供商列表，通常为 [Ai.providers]。
- * @param state 当前表单状态。
- * @param modelItems 当前提供商已缓存的模型列表（由宿主 [remember] 持有，切换 Tab 不丢失）。
- * @param onModelItemsChange 模型列表更新回调。
- * @param onProviderChange 切换提供商；宿主应加载该 id 的已存配置并回填默认 API/模型。
- * @param onApiKeyChange API Key 变更。
- * @param onApiUriChange API 地址变更。
- * @param onModelChange 模型名变更。
- * @param onVisionEnabledChange 视觉开关变更。
- * @param onTemperatureChange 采样温度变更（`0.0`～`2.0`）。
- * @param onProxyChange 网络代理变更（全局，对所有提供商生效）。
- * @param onSave 点击保存。
- * @param onTestStateChange 测试/保存结果状态更新。
  * @param onOpenCreateKeyUri 打开申请 Key 外链（非空 [ProviderDef.createKeyUri] 时显示按钮）。
- * @param scrollEnabled 为 `false` 时由外层提供滚动（嵌入已有 Scroll 容器时使用）。
  */
 @Composable
 fun AiSettingsScreen(
     ai: Ai,
     providers: List<ProviderDef>,
-    state: AiSettingsState,
-    modelItems: List<String>,
-    onModelItemsChange: (List<String>) -> Unit,
-    onProviderChange: (String) -> Unit,
-    onApiKeyChange: (String) -> Unit,
-    onApiUriChange: (String) -> Unit,
-    onModelChange: (String) -> Unit,
-    onVisionEnabledChange: (Boolean) -> Unit,
-    onTemperatureChange: (Double) -> Unit,
-    onProxyChange: (String) -> Unit,
-    onSave: () -> Unit,
-    onTestStateChange: (AiTestUiState) -> Unit,
     modifier: Modifier = Modifier,
-    scrollEnabled: Boolean = true,
     onOpenCreateKeyUri: (String) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
-    val def = providers.firstOrNull { it.id == state.providerId } ?: providers.first()
-    val providerNames = providers.map { it.displayName }
-    val selectedIndex = providers.indexOfFirst { it.id == state.providerId }.coerceAtLeast(0)
+    var settingsState by remember(providers) {
+        mutableStateOf(AiSettingsState(providerId = providers.first().id))
+    }
+    var modelsCache by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
 
-    val isRefreshingModels = state.testState is AiTestUiState.RefreshingModels
+    val def = providers.firstOrNull { it.id == settingsState.providerId } ?: providers.first()
+    val modelItems = modelsCache[settingsState.providerId].orEmpty()
+    val providerNames = providers.map { it.displayName }
+    val selectedIndex =
+        providers.indexOfFirst { it.id == settingsState.providerId }.coerceAtLeast(0)
+
+    val isRefreshingModels = settingsState.testState is AiTestUiState.RefreshingModels
     var apiKeyVisible by rememberSaveable { mutableStateOf(false) }
 
     val invalidMessage = stringResource(R.string.ai_config_invalid)
     val testingMessage = stringResource(
-        if (state.visionEnabled) R.string.ai_test_running_vision else R.string.ai_test_running,
+        if (settingsState.visionEnabled) R.string.ai_test_running_vision else R.string.ai_test_running,
     )
     val successMessage = stringResource(
-        if (state.visionEnabled) R.string.ai_test_success_vision else R.string.ai_test_success,
+        if (settingsState.visionEnabled) R.string.ai_test_success_vision else R.string.ai_test_success,
     )
     val failedTemplate = stringResource(R.string.ai_test_failed)
     val savedMessage = stringResource(R.string.ai_saved)
@@ -129,43 +107,57 @@ fun AiSettingsScreen(
     val hideKeyLabel = stringResource(R.string.ai_hide_api_key)
     val proxyPlaceholder = stringResource(R.string.ai_proxy_placeholder)
 
-    suspend fun persistProxy() {
-        ai.saveProxy(state.proxy)
+    suspend fun loadProviderSettings(providerId: String) {
+        val providerDef = providers.firstOrNull { it.id == providerId } ?: providers.first()
+        settingsState = AiSettingsState.from(providerDef, ai.settings(providerDef.id), ai.proxy())
+            .copy(testState = AiTestUiState.Idle)
     }
 
-    val modelPopupOptions = remember(modelItems, state.model) {
+    suspend fun persistSettings() {
+        val providerDef =
+            providers.firstOrNull { it.id == settingsState.providerId } ?: providers.first()
+        ai.saveSettings(settingsState.toEffectiveSettings(providerDef))
+        ai.saveProxy(settingsState.proxy)
+    }
+
+    val modelPopupOptions = remember(modelItems, settingsState.model) {
         buildList {
-            if (state.model.isNotBlank()) add(state.model)
-            addAll(modelItems.filter { it.isNotBlank() && it != state.model })
+            if (settingsState.model.isNotBlank()) add(settingsState.model)
+            addAll(modelItems.filter { it.isNotBlank() && it != settingsState.model })
         }
     }
 
     fun refreshModels() {
-        val settings = state.toEffectiveSettings(def)
+        val settings = settingsState.toEffectiveSettings(def)
         if (settings.apiKey.isBlank()) {
-            onTestStateChange(AiTestUiState.Failure(invalidMessage))
+            settingsState = settingsState.copy(testState = AiTestUiState.Failure(invalidMessage))
             ThemeToast.show(invalidMessage, ThemeToast.Style.Warning)
             return
         }
         scope.launch {
-            onTestStateChange(AiTestUiState.RefreshingModels)
-            persistProxy()
+            settingsState = settingsState.copy(testState = AiTestUiState.RefreshingModels)
+            ai.saveProxy(settingsState.proxy)
             ai.listModels(settings)
                 .onSuccess { models ->
-                    onModelItemsChange(models)
+                    modelsCache = modelsCache + (settingsState.providerId to models)
                     when {
                         models.isEmpty() -> {
-                            onTestStateChange(AiTestUiState.Failure(refreshModelsEmptyMessage))
+                            settingsState = settingsState.copy(
+                                testState = AiTestUiState.Failure(refreshModelsEmptyMessage),
+                            )
                             ThemeToast.show(refreshModelsEmptyMessage, ThemeToast.Style.Warning)
                         }
 
                         else -> {
-                            if (state.model !in models) {
-                                onModelChange(
-                                    def.defaultModel.takeIf { it in models } ?: models.first(),
+                            if (settingsState.model !in models) {
+                                settingsState = settingsState.copy(
+                                    model = def.defaultModel.takeIf { it in models }
+                                        ?: models.first(),
                                 )
                             }
-                            onTestStateChange(AiTestUiState.ModelsRefreshed(models.size))
+                            settingsState = settingsState.copy(
+                                testState = AiTestUiState.ModelsRefreshed(models.size),
+                            )
                             ThemeToast.show(
                                 refreshModelsSuccessTemplate.format(models.size),
                                 ThemeToast.Style.Success,
@@ -175,30 +167,23 @@ fun AiSettingsScreen(
                 }
                 .onFailure { error ->
                     val message = refreshModelsFailedTemplate.format(error.displayMessage())
-                    onTestStateChange(AiTestUiState.Failure(message))
+                    settingsState = settingsState.copy(testState = AiTestUiState.Failure(message))
                     ThemeToast.show(message, ThemeToast.Style.Error)
                 }
         }
     }
 
-    val scrollState = rememberScrollState()
+    LaunchedEffect(ai, providers) {
+        loadProviderSettings(ai.activeProviderId())
+    }
 
-    LaunchedEffect(state.providerId) {
+    LaunchedEffect(settingsState.providerId) {
         apiKeyVisible = false
     }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .then(
-                if (scrollEnabled) {
-                    Modifier
-                        .fillMaxHeight()
-                        .verticalScroll(scrollState)
-                } else {
-                    Modifier
-                },
-            )
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -207,22 +192,28 @@ fun AiSettingsScreen(
         ThemeSettingDropdown(
             items = providerNames,
             selectedIndex = selectedIndex,
-            onSelectedIndexChange = { onProviderChange(providers[it].id) },
+            onSelectedIndexChange = { index ->
+                val id = providers[index].id
+                scope.launch {
+                    ai.switchProvider(id)
+                    loadProviderSettings(id)
+                }
+            },
             title = stringResource(R.string.ai_provider),
             startAction = { SettingIcon(Icons.Filled.SmartToy) },
             position = SettingCardPosition.First,
         )
         ThemeSettingTextField(
-            value = state.apiUri,
-            onValueChange = onApiUriChange,
+            value = settingsState.apiUri,
+            onValueChange = { settingsState = settingsState.copy(apiUri = it) },
             title = stringResource(R.string.ai_api_uri),
             placeholder = def.defaultApiUri,
             startAction = { SettingIcon(Icons.Filled.Link) },
             position = SettingCardPosition.Middle,
         )
         ThemeSettingTextField(
-            value = state.apiKey,
-            onValueChange = onApiKeyChange,
+            value = settingsState.apiKey,
+            onValueChange = { settingsState = settingsState.copy(apiKey = it) },
             title = stringResource(R.string.ai_api_key),
             inputMode = if (apiKeyVisible) SettingInputMode.Text else SettingInputMode.Password,
             startAction = { SettingIcon(Icons.Filled.Key) },
@@ -257,8 +248,8 @@ fun AiSettingsScreen(
             },
         )
         ThemeSettingTextField(
-            value = state.model,
-            onValueChange = onModelChange,
+            value = settingsState.model,
+            onValueChange = { settingsState = settingsState.copy(model = it) },
             title = stringResource(R.string.ai_model),
             placeholder = def.defaultModel,
             startAction = { SettingIcon(Icons.Filled.SmartToy) },
@@ -267,7 +258,7 @@ fun AiSettingsScreen(
             fieldEndAction = {
                 SettingFieldListPopup(
                     options = modelPopupOptions,
-                    onSelect = onModelChange,
+                    onSelect = { settingsState = settingsState.copy(model = it) },
                     enabled = !isRefreshingModels,
                 )
             },
@@ -285,7 +276,7 @@ fun AiSettingsScreen(
             },
         )
 
-        val temperatureValue = snapAiTemperature(state.temperature.toFloat())
+        val temperatureValue = snapAiTemperature(settingsState.temperature.toFloat())
         ThemeSettingSlider(
             title = stringResource(R.string.ai_temperature),
             summary = stringResource(
@@ -293,7 +284,9 @@ fun AiSettingsScreen(
                 ProviderSettings.DEFAULT_TEMPERATURE,
             ),
             value = temperatureValue,
-            onValueChange = { onTemperatureChange(snapAiTemperature(it).toDouble()) },
+            onValueChange = {
+                settingsState = settingsState.copy(temperature = snapAiTemperature(it).toDouble())
+            },
             valueRange = AI_TEMPERATURE_MIN..AI_TEMPERATURE_MAX,
             steps = AI_TEMPERATURE_STEPS,
             valueLabel = stringResource(R.string.ai_temperature_value, temperatureValue),
@@ -303,14 +296,14 @@ fun AiSettingsScreen(
 
         ThemeSettingSwitch(
             title = stringResource(R.string.ai_vision_enabled),
-            checked = state.visionEnabled,
-            onCheckedChange = onVisionEnabledChange,
+            checked = settingsState.visionEnabled,
+            onCheckedChange = { settingsState = settingsState.copy(visionEnabled = it) },
             startAction = { SettingIcon(Icons.Filled.Visibility) },
             position = SettingCardPosition.Middle,
         )
         ThemeSettingTextField(
-            value = state.proxy,
-            onValueChange = onProxyChange,
+            value = settingsState.proxy,
+            onValueChange = { settingsState = settingsState.copy(proxy = it) },
             title = stringResource(R.string.ai_proxy),
             summary = stringResource(R.string.ai_proxy_summary),
             placeholder = proxyPlaceholder,
@@ -334,38 +327,44 @@ fun AiSettingsScreen(
                 ) {
                     ThemeSecondaryButton(
                         onClick = {
-                            val settings = state.toEffectiveSettings(def)
+                            val settings = settingsState.toEffectiveSettings(def)
                             if (settings.apiKey.isBlank()) {
-                                onTestStateChange(AiTestUiState.Failure(invalidMessage))
+                                settingsState = settingsState.copy(
+                                    testState = AiTestUiState.Failure(invalidMessage),
+                                )
                                 return@ThemeSecondaryButton
                             }
-                            onSave()
-                            onTestStateChange(AiTestUiState.Saved)
+                            scope.launch { persistSettings() }
+                            settingsState = settingsState.copy(testState = AiTestUiState.Saved)
                         },
                         modifier = Modifier.weight(1f),
-                        enabled = !state.isTesting,
+                        enabled = !settingsState.isTesting,
                         text = stringResource(R.string.ai_save),
                     )
                     ThemePrimaryButton(
                         onClick = {
-                            if (state.isTesting) return@ThemePrimaryButton
-                            val settings = state.toEffectiveSettings(def)
+                            if (settingsState.isTesting) return@ThemePrimaryButton
+                            val settings = settingsState.toEffectiveSettings(def)
                             if (settings.apiKey.isBlank()) {
-                                onTestStateChange(AiTestUiState.Failure(invalidMessage))
+                                settingsState = settingsState.copy(
+                                    testState = AiTestUiState.Failure(invalidMessage),
+                                )
                                 return@ThemePrimaryButton
                             }
                             scope.launch {
-                                onTestStateChange(AiTestUiState.Running)
-                                persistProxy()
+                                settingsState =
+                                    settingsState.copy(testState = AiTestUiState.Running)
+                                ai.saveProxy(settingsState.proxy)
                                 when (val result = AiTest.run(ai, settings)) {
                                     AiTestResult.Success -> {
-                                        onSave()
-                                        onTestStateChange(AiTestUiState.Success)
+                                        persistSettings()
+                                        settingsState =
+                                            settingsState.copy(testState = AiTestUiState.Success)
                                     }
 
                                     is AiTestResult.Failure -> {
-                                        onTestStateChange(
-                                            AiTestUiState.Failure(
+                                        settingsState = settingsState.copy(
+                                            testState = AiTestUiState.Failure(
                                                 failedTemplate.format(result.message),
                                             ),
                                         )
@@ -374,13 +373,13 @@ fun AiSettingsScreen(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        enabled = !state.isTesting,
+                        enabled = !settingsState.isTesting,
                         text = stringResource(R.string.ai_test),
                     )
                 }
 
                 AiTestResultContent(
-                    testState = state.testState,
+                    testState = settingsState.testState,
                     testingMessage = testingMessage,
                     successMessage = successMessage,
                     savedMessage = savedMessage,

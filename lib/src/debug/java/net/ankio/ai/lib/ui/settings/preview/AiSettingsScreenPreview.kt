@@ -22,18 +22,6 @@ private fun AiSettingsScreenPreview(
         AiSettingsScreen(
             ai = ai,
             providers = ai.providers,
-            state = AiPreviewSamples.settingsState,
-            modelItems = listOf("deepseek-chat", "deepseek-reasoner"),
-            onModelItemsChange = {},
-            onProviderChange = {},
-            onApiKeyChange = {},
-            onApiUriChange = {},
-            onModelChange = {},
-            onVisionEnabledChange = {},
-            onTemperatureChange = {},
-            onProxyChange = {},
-            onSave = {},
-            onTestStateChange = {},
         )
     }
 }
