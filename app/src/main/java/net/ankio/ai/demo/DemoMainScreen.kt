@@ -48,6 +48,9 @@ fun DemoMainScreen(
         )
     }
 
+    /** 按 providerId 缓存模型列表，切换 Tab / 返回设置页时保留。 */
+    var modelsCache by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
+
     suspend fun loadProviderSettings(providerId: String) {
         val def = ai.providers.first { it.id == providerId }
         settingsState = AiSettingsState.from(def, ai.settings(providerId), ai.proxy())
@@ -70,6 +73,10 @@ fun DemoMainScreen(
                     ai = ai,
                     providers = ai.providers,
                     state = settingsState,
+                    modelItems = modelsCache[settingsState.providerId].orEmpty(),
+                    onModelItemsChange = { models ->
+                        modelsCache = modelsCache + (settingsState.providerId to models)
+                    },
                     onProviderChange = { id ->
                         scope.launch {
                             ai.switchProvider(id)

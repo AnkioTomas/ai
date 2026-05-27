@@ -57,6 +57,7 @@ import net.ankio.theme.settings.ThemeSettingDropdown
 import net.ankio.theme.settings.ThemeSettingSlider
 import net.ankio.theme.settings.ThemeSettingSwitch
 import net.ankio.theme.settings.ThemeSettingTextField
+import net.ankio.theme.toast.ThemeToast
 import kotlin.math.round
 
 /**
@@ -68,6 +69,8 @@ import kotlin.math.round
  * @param ai [Ai] 实例，用于拉模型与测试。
  * @param providers 可选提供商列表，通常为 [Ai.providers]。
  * @param state 当前表单状态。
+ * @param modelItems 当前提供商已缓存的模型列表（由宿主 [remember] 持有，切换 Tab 不丢失）。
+ * @param onModelItemsChange 模型列表更新回调。
  * @param onProviderChange 切换提供商；宿主应加载该 id 的已存配置并回填默认 API/模型。
  * @param onApiKeyChange API Key 变更。
  * @param onApiUriChange API 地址变更。
@@ -85,6 +88,8 @@ fun AiSettingsScreen(
     ai: Ai,
     providers: List<ProviderDef>,
     state: AiSettingsState,
+    modelItems: List<String>,
+    onModelItemsChange: (List<String>) -> Unit,
     onProviderChange: (String) -> Unit,
     onApiKeyChange: (String) -> Unit,
     onApiUriChange: (String) -> Unit,
@@ -103,8 +108,7 @@ fun AiSettingsScreen(
     val providerNames = providers.map { it.displayName }
     val selectedIndex = providers.indexOfFirst { it.id == state.providerId }.coerceAtLeast(0)
 
-    var modelItems by remember(state.providerId) { mutableStateOf<List<String>>(emptyList()) }
-    var isRefreshingModels by remember { mutableStateOf(false) }
+    val isRefreshingModels = state.testState is AiTestUiState.RefreshingModels
     var apiKeyVisible by rememberSaveable { mutableStateOf(false) }
 
     val invalidMessage = stringResource(R.string.ai_config_invalid)
@@ -140,18 +144,19 @@ fun AiSettingsScreen(
         val settings = state.toEffectiveSettings(def)
         if (settings.apiKey.isBlank()) {
             onTestStateChange(AiTestUiState.Failure(invalidMessage))
+            ThemeToast.show(invalidMessage, ThemeToast.Style.Warning)
             return
         }
         scope.launch {
-            isRefreshingModels = true
             onTestStateChange(AiTestUiState.RefreshingModels)
             persistProxy()
             ai.listModels(settings)
                 .onSuccess { models ->
-                    modelItems = models
+                    onModelItemsChange(models)
                     when {
                         models.isEmpty() -> {
                             onTestStateChange(AiTestUiState.Failure(refreshModelsEmptyMessage))
+                            ThemeToast.show(refreshModelsEmptyMessage, ThemeToast.Style.Warning)
                         }
 
                         else -> {
@@ -161,24 +166,24 @@ fun AiSettingsScreen(
                                 )
                             }
                             onTestStateChange(AiTestUiState.ModelsRefreshed(models.size))
+                            ThemeToast.show(
+                                refreshModelsSuccessTemplate.format(models.size),
+                                ThemeToast.Style.Success,
+                            )
                         }
                     }
                 }
                 .onFailure { error ->
-                    onTestStateChange(
-                        AiTestUiState.Failure(
-                            refreshModelsFailedTemplate.format(error.displayMessage()),
-                        ),
-                    )
+                    val message = refreshModelsFailedTemplate.format(error.displayMessage())
+                    onTestStateChange(AiTestUiState.Failure(message))
+                    ThemeToast.show(message, ThemeToast.Style.Error)
                 }
-            isRefreshingModels = false
         }
     }
 
     val scrollState = rememberScrollState()
 
     LaunchedEffect(state.providerId) {
-        modelItems = emptyList()
         apiKeyVisible = false
     }
 

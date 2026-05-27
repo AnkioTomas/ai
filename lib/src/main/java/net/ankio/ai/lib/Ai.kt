@@ -227,7 +227,8 @@ class Ai(
     /**
      * 流式对话请求；通过 [onChunk] 逐段接收增量文本。
      *
-     * @param onChunk 每收到一段 delta 文本时回调；流式模式下无整体返回值。
+     * @param onChunk 每收到一段 delta 文本时回调（可能在 IO 线程调用）。
+     * @return 流结束后的结果；增量文本仅通过 [onChunk] 推送。
      */
     suspend fun requestStream(
         system: String,
@@ -235,7 +236,7 @@ class Ai(
         image: String = "",
         providerId: String? = null,
         onChunk: (String) -> Unit,
-    ) {
+    ): Result<Unit> {
         val ctx = ctx(providerId)
         logChatStart(
             ctx,
@@ -244,7 +245,7 @@ class Ai(
             userLen = user.length,
             systemLen = system.length
         )
-        backend(providerId).chatStream(ctx, system, user, image, onChunk)
+        return backend(providerId).chatStream(ctx, system, user, image, onChunk)
             .also { logChatStreamResult(ctx, it) }
     }
 
