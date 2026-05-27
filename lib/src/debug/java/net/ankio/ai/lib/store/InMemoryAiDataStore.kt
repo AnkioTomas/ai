@@ -4,7 +4,14 @@ import net.ankio.ai.lib.AI_DEFAULT_PROVIDER_ID
 import net.ankio.ai.lib.core.AiDataStore
 import net.ankio.ai.lib.core.ProviderSettings
 
-/** Preview / 单元测试用内存 [AiDataStore]，不随 release AAR 发布。 */
+/**
+ * Preview / 单元测试用内存 [AiDataStore]。
+ *
+ * 不随 release AAR 发布；内存中按 provider 聚合 [ProviderSettings]，字段读写映射到 map。
+ *
+ * @param activeProviderId 初始激活提供商 id。
+ * @param settingsByProvider 各提供商配置缓存。
+ */
 internal class InMemoryAiDataStore(
     private var activeProviderId: String = AI_DEFAULT_PROVIDER_ID,
     private val settingsByProvider: MutableMap<String, ProviderSettings> = mutableMapOf(),
@@ -44,6 +51,7 @@ internal class InMemoryAiDataStore(
         update(providerId) { it.copy(visionEnabled = enabled) }
     }
 
+    /** 更新指定 provider 的配置块。 */
     private fun update(providerId: String, transform: (ProviderSettings) -> ProviderSettings) {
         val current = settingsByProvider[providerId] ?: ProviderSettings(providerId = providerId)
         settingsByProvider[providerId] = transform(current)

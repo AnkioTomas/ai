@@ -23,7 +23,13 @@ import net.ankio.theme.compat.ThemeListPopupItem
 import net.ankio.theme.compat.ThemeSuperListPopup
 
 /**
- * 设置项输入框内的下拉按钮 + [ThemeSuperListPopup] 列表。
+ * 设置项输入框内的下拉按钮 + [ThemeSuperListPopup] 模型列表。
+ *
+ * @param options 可选项（通常为刷新得到的模型 id）。
+ * @param onSelect 选中某项后的回调。
+ * @param modifier 修饰符。
+ * @param enabled 是否可展开。
+ * @param emptyText 列表为空时的提示文案。
  */
 @Composable
 internal fun SettingFieldListPopup(

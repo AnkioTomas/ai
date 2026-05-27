@@ -11,6 +11,7 @@ import net.ankio.theme.PreviewAllThemes
 import net.ankio.theme.ThemePreviewConfig
 import net.ankio.theme.ThemePreviewParameterProvider
 
+/** [AiSettingsScreen] 多主题 Preview。 */
 @PreviewAllScreen
 @Composable
 private fun AiSettingsScreenPreview(
@@ -33,6 +34,7 @@ private fun AiSettingsScreenPreview(
     }
 }
 
+/** Preview 用空日志实现。 */
 private object PreviewAiLogger : AiLogger {
     override fun debug(tag: String, message: String) = Unit
     override fun error(tag: String, message: String, throwable: Throwable?) = Unit

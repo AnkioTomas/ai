@@ -2,41 +2,82 @@ package net.ankio.ai.lib.provider
 
 import net.ankio.ai.lib.core.AiLogger
 import net.ankio.ai.lib.core.ProviderSettings
+import net.ankio.ai.lib.provider.AiProviders.DEFAULT_ID
 import net.ankio.ai.lib.provider.gemini.GeminiBackend
 import net.ankio.ai.lib.provider.openai.OpenAiBackend
 
-/** 内置提供商元数据 */
+/**
+ * 内置 AI 提供商的静态元数据。
+ *
+ * 描述默认端点、模型、申请 Key 链接及 OpenAI 兼容路径；
+ * 实际请求参数来自 [net.ankio.ai.lib.core.ProviderSettings]。
+ */
 data class ProviderDef(
+    /** 唯一标识，如 `deepseek`、`gemini`。 */
     val id: String,
+    /** 设置页展示名称。 */
     val displayName: String,
+    /** 默认 API 根地址（无自定义 [ProviderSettings.apiUri] 时使用）。 */
     val defaultApiUri: String,
+    /** 默认模型名（无自定义 [ProviderSettings.model] 时使用）。 */
     val defaultModel: String,
+    /** 申请 API Key 的网页；空字符串表示不显示外链按钮。 */
     val createKeyUri: String,
+    /** OpenAI 兼容：对话接口路径，拼在 [defaultApiUri] 后。 */
     val chatPath: String = "/v1/chat/completions",
+    /** OpenAI 兼容：模型列表路径；空表示不请求列表接口。 */
     val modelsPath: String = "/v1/models",
-    /** 非空则跳过 models 接口，直接返回此列表 */
+    /** 非空时跳过 models 接口，直接返回此静态列表。 */
     val staticModels: List<String>? = null,
 )
 
+/**
+ * 单次 API 调用的运行时上下文。
+ *
+ * 合并 [ProviderDef]、[ProviderSettings] 与日志、UA，并解析有效的 apiUri / model。
+ */
 internal data class AiCtx(
     val def: ProviderDef,
     val settings: ProviderSettings,
     val logger: AiLogger,
     val userAgent: String,
 ) {
+    /** 当前请求的 API Key。 */
     val apiKey get() = settings.apiKey
+
+    /** 生效的 API 根地址（自定义优先，否则 [ProviderDef.defaultApiUri]）。 */
     val apiUri get() = settings.apiUri?.takeIf { it.isNotBlank() } ?: def.defaultApiUri
+
+    /** 生效的模型名（自定义优先，否则 [ProviderDef.defaultModel]）。 */
     val model get() = settings.model?.takeIf { it.isNotBlank() } ?: def.defaultModel
+
+    /** 是否启用视觉。 */
     val visionEnabled get() = settings.visionEnabled
+
+    /** 日志标签 `Ai/{id}`。 */
     val tag get() = "Ai/${def.id}"
 
+    /** 输出 debug 日志。 */
     fun logD(msg: String) = logger.debug(tag, msg)
+
+    /** 输出 error 日志。 */
     fun logE(msg: String, t: Throwable? = null) = logger.error(tag, msg, t)
 }
 
+/** 某一协议族（OpenAI 兼容 / Gemini）的后端实现。 */
 internal interface ProviderBackend {
+    /** 绑定的提供商定义。 */
     val def: ProviderDef
+
+    /** 拉取可用模型 id 列表。 */
     suspend fun models(ctx: AiCtx): List<String>
+
+    /**
+     * 发起对话。
+     *
+     * @param onChunk 非空时走流式；为空时返回完整文本。
+     * @return 非流式时为完整回复；流式时返回空字符串，内容通过 [onChunk] 推送。
+     */
     suspend fun chat(
         ctx: AiCtx,
         system: String,
@@ -46,8 +87,10 @@ internal interface ProviderBackend {
     ): Result<String>
 }
 
+/** 内置提供商注册表与 [ProviderBackend] 工厂。 */
 internal object AiProviders {
 
+    /** 默认提供商 id（DeepSeek）。 */
     const val DEFAULT_ID: String = "deepseek"
 
     private fun openAi(
@@ -244,6 +287,7 @@ internal object AiProviders {
         OLLAMA, LMSTUDIO, AZURE, CUSTOM,
     )
 
+    /** 所有内置提供商（OpenAI 兼容 + Gemini）。 */
     val all: List<ProviderDef> = openAiDefs + GEMINI
 
     private val backends: Map<String, ProviderBackend> = buildMap {
@@ -251,8 +295,16 @@ internal object AiProviders {
         put(GEMINI.id, GeminiBackend(GEMINI))
     }
 
+    /**
+     * 按 id 查找 [ProviderDef]。
+     *
+     * @throws IllegalStateException 未知 id。
+     */
     fun def(id: String): ProviderDef =
         all.firstOrNull { it.id == id } ?: error("Unknown provider: $id")
 
+    /**
+     * 按 id 获取 [ProviderBackend]；未知 id 时回落到 [DEFAULT_ID] 对应后端。
+     */
     fun backend(id: String): ProviderBackend = backends[id] ?: backends[DEFAULT_ID]!!
 }

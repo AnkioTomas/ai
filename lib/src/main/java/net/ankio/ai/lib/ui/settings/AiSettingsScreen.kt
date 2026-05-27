@@ -51,8 +51,22 @@ import net.ankio.theme.settings.ThemeSettingSwitch
 import net.ankio.theme.settings.ThemeSettingTextField
 
 /**
- * AI 配置页：Provider 下拉；API / Key / Model 为 [ThemeSettingTextField]；
- * Key 支持明文切换；Model 通过 [SettingFieldListPopup] 选择。
+ * AI 提供商配置 Compose 页面。
+ *
+ * 包含：提供商下拉、API 地址、API Key（可切换明文）、模型（可刷新列表 + Popup 选择）、
+ * 视觉开关、保存与测试连接。
+ *
+ * @param ai [Ai] 实例，用于拉模型与测试。
+ * @param providers 可选提供商列表，通常为 [Ai.providers]。
+ * @param state 当前表单状态。
+ * @param onProviderChange 切换提供商；宿主应加载该 id 的已存配置并回填默认 API/模型。
+ * @param onApiKeyChange API Key 变更。
+ * @param onApiUriChange API 地址变更。
+ * @param onModelChange 模型名变更。
+ * @param onVisionEnabledChange 视觉开关变更。
+ * @param onSave 点击保存。
+ * @param onTestStateChange 测试/保存结果状态更新。
+ * @param onOpenCreateKeyUri 打开申请 Key 外链（非空 [ProviderDef.createKeyUri] 时显示按钮）。
  */
 @Composable
 fun AiSettingsScreen(
@@ -299,6 +313,7 @@ fun AiSettingsScreen(
     }
 }
 
+/** 设置项左侧主题色图标。 */
 @Composable
 private fun SettingIcon(imageVector: ImageVector) {
     Icon(
@@ -308,6 +323,14 @@ private fun SettingIcon(imageVector: ImageVector) {
     )
 }
 
+/**
+ * 测试结果卡片内容区。
+ *
+ * @param testState 当前测试/保存状态。
+ * @param testingMessage 测试中提示文案。
+ * @param successMessage 测试成功文案。
+ * @param savedMessage 仅保存成功文案。
+ */
 @Composable
 internal fun AiTestResultContent(
     testState: AiTestUiState,

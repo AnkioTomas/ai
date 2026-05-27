@@ -19,10 +19,16 @@ import net.ankio.ai.lib.provider.ProviderBackend
 import net.ankio.ai.lib.provider.ProviderDef
 import okhttp3.Request
 
+/**
+ * Google Gemini `v1beta` 协议后端。
+ *
+ * 使用 `generateContent` / `streamGenerateContent` 及 API Key 查询参数鉴权。
+ */
 internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
 
     private val json get() = AiJson.json
 
+    /** 保证 base URL 以 `/v1beta` 结尾。 */
     private fun baseUri(ctx: AiCtx): String {
         val trimmed = ctx.apiUri.trimEnd('/')
         return if (trimmed.endsWith("/v1beta")) trimmed else "$trimmed/v1beta"
@@ -60,7 +66,7 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
             .postJson(
                 json,
                 GeminiGenerateRequest.serializer(),
-                GeminiRequestFactory.build(system, user, image)
+                GeminiRequestFactory.build(system, user, image),
             )
             .addHeader("x-goog-api-key", ctx.apiKey)
             .addHeader("Content-Type", "application/json")
@@ -90,9 +96,9 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
         }
     }
 
+    /** 从单条 SSE/JSON 片段解析文本。 */
     private fun parse(
         body: String,
-        ser: kotlinx.serialization.KSerializer<GeminiGenerateResponse>
-    ): String? =
-        runCatching { json.decodeBody(body, ser).firstText() }.getOrNull()
+        ser: kotlinx.serialization.KSerializer<GeminiGenerateResponse>,
+    ): String? = runCatching { json.decodeBody(body, ser).firstText() }.getOrNull()
 }

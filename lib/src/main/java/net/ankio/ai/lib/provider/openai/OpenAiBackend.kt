@@ -23,6 +23,11 @@ import net.ankio.ai.lib.provider.ProviderBackend
 import net.ankio.ai.lib.provider.ProviderDef
 import okhttp3.Request
 
+/**
+ * OpenAI Chat Completions 兼容协议后端。
+ *
+ * 适用于 DeepSeek、OpenAI、国内多数兼容端点等 [ProviderDef] 中 `chatPath` / `modelsPath` 配置项。
+ */
 internal class OpenAiBackend(
     override val def: ProviderDef,
 ) : ProviderBackend {
@@ -90,6 +95,7 @@ internal class OpenAiBackend(
         }
     }
 
+    /** 解析 SSE `data:` 行并回调增量文本。 */
     private suspend fun stream(request: Request, onChunk: (String) -> Unit) {
         withContext(Dispatchers.IO) {
             AiHttp.client.newCall(request).execute().use { response ->

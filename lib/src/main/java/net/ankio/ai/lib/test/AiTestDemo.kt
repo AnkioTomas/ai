@@ -1,7 +1,12 @@
 package net.ankio.ai.lib.test
 
-/** 连接测试用 demo 图（JPEG），图中文字为 AUTO TEST */
+/**
+ * 视觉连接测试用的内嵌 JPEG（Base64）。
+ *
+ * 图中文字为 `AUTO TEST`，供 [net.ankio.ai.lib.Ai.testConnection] 视觉分支使用。
+ */
 internal object AiTestDemo {
+    /** 无 `data:image` 前缀的 JPEG Base64 载荷。 */
     val IMAGE_BASE64: String =
         "/9j/4AAQSkZJRgABAQAASABIAAD/4QBMRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAA" +
                 "A6ABAAMAAAABAAEAAKACAAQAAAABAAAA/KADAAQAAAABAAAARAAAAAD/7QA4UGhvdG9zaG9wIDMu" +
