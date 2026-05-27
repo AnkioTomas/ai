@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_section">AI 服务</string>
+    <string name="ai_provider">提供商</string>
+    <string name="ai_api_key">API Key</string>
+    <string name="ai_api_uri">API 地址</string>
+    <string name="ai_api_uri_hint">留空使用默认：%1$s</string>
+    <string name="ai_model">模型</string>
+    <string name="ai_model_hint">留空使用默认：%1$s</string>
+    <string name="ai_vision_enabled">启用视觉识别</string>
+    <string name="ai_create_key">获取 API Key</string>
+    <string name="ai_refresh_models">刷新模型列表</string>
+    <string name="ai_refresh_models_failed">刷新模型失败：%1$s</string>
+    <string name="ai_save">保存</string>
+    <string name="ai_test">测试连接</string>
+    <string name="ai_test_running">正在测试连接…</string>
+    <string name="ai_test_success">连接成功，配置已自动保存</string>
+    <string name="ai_test_failed">连接失败：%1$s</string>
+    <string name="ai_saved">配置已保存</string>
+    <string name="ai_config_invalid">请填写 API Key</string>
+    <string name="ai_test_result_title">测试结果</string>
+    <string name="ai_test_result_idle">填写配置后，可保存或测试连接</string>
+</resources>

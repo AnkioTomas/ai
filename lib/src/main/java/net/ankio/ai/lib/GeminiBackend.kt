@@ -1,0 +1,81 @@
+package net.ankio.ai.lib
+
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import net.ankio.ai.lib.model.gemini.GeminiGenerateRequest
+import net.ankio.ai.lib.model.gemini.GeminiGenerateResponse
+import net.ankio.ai.lib.model.gemini.GeminiModelsResponse
+import net.ankio.ai.lib.model.gemini.GeminiRequestFactory
+import net.ankio.ai.lib.model.gemini.firstText
+import okhttp3.Request
+
+internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
+
+    private val json get() = AiJson.json
+
+    private fun baseUri(ctx: AiCtx): String {
+        val trimmed = ctx.apiUri.trimEnd('/')
+        return if (trimmed.endsWith("/v1beta")) trimmed else "$trimmed/v1beta"
+    }
+
+    override suspend fun models(ctx: AiCtx): List<String> = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUri(ctx)}?key=${ctx.apiKey}")
+            .userAgent(ctx)
+            .get()
+            .build()
+        runCatchingExceptCancel {
+            AiHttp.client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) error("HTTP ${response.code}")
+                val body = response.body?.string() ?: error("Empty body")
+                json.decodeBody(body, GeminiModelsResponse.serializer()).models.map { it.name }
+            }
+        }.getOrElse {
+            ctx.logE("获取模型失败", it)
+            emptyList()
+        }
+    }
+
+    override suspend fun chat(
+        ctx: AiCtx,
+        system: String,
+        user: String,
+        image: String,
+        onChunk: ((String) -> Unit)?,
+    ): Result<String> = withContext(Dispatchers.IO) {
+        val path = if (onChunk == null) "generateContent" else "streamGenerateContent?alt=sse"
+        val request = Request.Builder()
+            .url("${baseUri(ctx)}/${ctx.model}:$path")
+            .userAgent(ctx)
+            .postJson(json, GeminiGenerateRequest.serializer(), GeminiRequestFactory.build(system, user, image))
+            .addHeader("x-goog-api-key", ctx.apiKey)
+            .addHeader("Content-Type", "application/json")
+            .build()
+        val respSer = GeminiGenerateResponse.serializer()
+
+        runCatchingExceptCancel {
+            AiHttp.client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) error("HTTP ${response.code}: ${response.body?.string()}")
+                if (onChunk != null) {
+                    response.body?.source()?.let { source ->
+                        while (!source.exhausted()) {
+                            val line = source.readUtf8Line() ?: break
+                            if (!line.startsWith("data: ")) continue
+                            val data = line.substring(6)
+                            if (data.isNotBlank() && data != "[DONE]") {
+                                parse(data, respSer)?.let(onChunk)
+                            }
+                        }
+                    }
+                    ""
+                } else {
+                    val body = response.body?.string()?.removeThink() ?: error("Empty body")
+                    parse(body, respSer) ?: error("Empty AI response")
+                }
+            }
+        }
+    }
+
+    private fun parse(body: String, ser: kotlinx.serialization.KSerializer<GeminiGenerateResponse>): String? =
+        runCatching { json.decodeBody(body, ser).firstText() }.getOrNull()
+}

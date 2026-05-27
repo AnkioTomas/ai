@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_section">AI Service</string>
+    <string name="ai_provider">Provider</string>
+    <string name="ai_api_key">API Key</string>
+    <string name="ai_api_uri">API URL</string>
+    <string name="ai_api_uri_hint">Leave blank for default: %1$s</string>
+    <string name="ai_model">Model</string>
+    <string name="ai_model_hint">Leave blank for default: %1$s</string>
+    <string name="ai_vision_enabled">Enable vision</string>
+    <string name="ai_create_key">Get API Key</string>
+    <string name="ai_refresh_models">Refresh model list</string>
+    <string name="ai_refresh_models_failed">Failed to refresh models: %1$s</string>
+    <string name="ai_save">Save</string>
+    <string name="ai_test">Test connection</string>
+    <string name="ai_test_running">Testing connection…</string>
+    <string name="ai_test_success">Connected. Settings saved automatically.</string>
+    <string name="ai_test_failed">Connection failed: %1$s</string>
+    <string name="ai_saved">Settings saved</string>
+    <string name="ai_config_invalid">Please enter API Key</string>
+    <string name="ai_test_result_title">Test result</string>
+    <string name="ai_test_result_idle">Enter settings, then save or test connection</string>
+</resources>
