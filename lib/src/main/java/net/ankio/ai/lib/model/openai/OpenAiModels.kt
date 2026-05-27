@@ -14,6 +14,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonPrimitive
 import net.ankio.ai.lib.core.AiJson
+import net.ankio.ai.lib.core.ProviderSettings
 
 // ── 请求 ─────────────────────────────────────────────────────────────
 
@@ -22,7 +23,7 @@ import net.ankio.ai.lib.core.AiJson
 data class ChatCompletionRequest(
     val model: String,
     val messages: List<ChatMessage>,
-    val temperature: Double = 0.7,
+    val temperature: Double = ProviderSettings.DEFAULT_TEMPERATURE,
     /** 为 `true` 时服务端返回 SSE 流。 */
     val stream: Boolean? = null,
 )

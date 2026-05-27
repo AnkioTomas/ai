@@ -4,9 +4,18 @@ import kotlinx.serialization.Serializable
 
 // ── 请求 ─────────────────────────────────────────────────────────────
 
+/** Gemini 生成参数（温度等）。 */
+@Serializable
+data class GeminiGenerationConfig(
+    val temperature: Double? = null,
+)
+
 /** Gemini `generateContent` / 流式请求体。 */
 @Serializable
-data class GeminiGenerateRequest(val contents: List<GeminiContent>)
+data class GeminiGenerateRequest(
+    val contents: List<GeminiContent>,
+    val generationConfig: GeminiGenerationConfig? = null,
+)
 
 /** 单轮 content（role + parts）。 */
 @Serializable
@@ -63,7 +72,12 @@ object GeminiRequestFactory {
      * @param user 用户文本。
      * @param image Base64 或 data URL；非空时追加 inlineData part。
      */
-    fun build(system: String, user: String, image: String): GeminiGenerateRequest {
+    fun build(
+        system: String,
+        user: String,
+        image: String,
+        generationConfig: GeminiGenerationConfig? = null,
+    ): GeminiGenerateRequest {
         val userParts = mutableListOf(GeminiPart(text = user))
         if (image.isNotBlank()) {
             val base64 = if (image.startsWith("data:image")) {
@@ -80,6 +94,7 @@ object GeminiRequestFactory {
                 GeminiContent(role = "user", parts = listOf(GeminiPart(text = system))),
                 GeminiContent(role = "user", parts = userParts),
             ),
+            generationConfig = generationConfig,
         )
     }
 }
