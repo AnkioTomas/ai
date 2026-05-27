@@ -89,9 +89,12 @@ class Ai(
      */
     suspend fun testConnection(settings: ProviderSettings): Result<Unit> {
         AiProviders.def(settings.providerId)
+        val testSettings = settings.copy(
+            temperature = ProviderSettings.TEST_TEMPERATURE,
+        )
         val ctx = AiCtx(
             AiProviders.def(settings.providerId),
-            settings,
+            testSettings,
             logger,
             userAgent,
         )
@@ -163,6 +166,8 @@ class Ai(
     /**
      * 非流式对话请求。
      *
+     * 采样温度来自该提供商已保存的 [ProviderSettings]。
+     *
      * @param system 系统提示词，可为空。
      * @param user 用户消息。
      * @param image Base64 或 `data:image/...` URL；非空时须已启用视觉。
@@ -176,7 +181,6 @@ class Ai(
         providerId: String? = null,
     ): Result<String> {
         val ctx = ctx(providerId)
-        checkVision(ctx, image)
         return backend(providerId).chat(ctx, system, user, image, onChunk = null)
     }
 
@@ -193,7 +197,6 @@ class Ai(
         onChunk: (String) -> Unit,
     ) {
         val ctx = ctx(providerId)
-        checkVision(ctx, image)
         backend(providerId).chat(ctx, system, user, image, onChunk)
     }
 
@@ -207,10 +210,4 @@ class Ai(
     private suspend fun backend(providerId: String?) =
         AiProviders.backend(providerId ?: activeProviderId())
 
-    /** 附带图片时校验该提供商是否已启用视觉。 */
-    private fun checkVision(ctx: AiCtx, image: String) {
-        if (image.isNotBlank() && !ctx.visionEnabled) {
-            error("提供商「${ctx.def.displayName}」未启用视觉识别")
-        }
-    }
 }
