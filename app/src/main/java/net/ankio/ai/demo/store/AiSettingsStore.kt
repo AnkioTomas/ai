@@ -5,6 +5,7 @@ import androidx.core.content.edit
 import net.ankio.ai.lib.AI_DEFAULT_PROVIDER_ID
 import net.ankio.ai.lib.core.AiDataStore
 import net.ankio.ai.lib.core.ProviderSettings
+import net.ankio.ai.lib.core.sanitizeCredential
 
 /** Demo：SharedPreferences 实现的 [AiDataStore]，按字段存储，不做 JSON 序列化。 */
 class AiSettingsStore(context: Context) : AiDataStore {
@@ -22,7 +23,7 @@ class AiSettingsStore(context: Context) : AiDataStore {
         prefs.getString(key(providerId, SUFFIX_API_KEY), "") ?: ""
 
     override suspend fun setApiKey(providerId: String, apiKey: String) {
-        prefs.edit { putString(key(providerId, SUFFIX_API_KEY), apiKey) }
+        prefs.edit { putString(key(providerId, SUFFIX_API_KEY), apiKey.sanitizeCredential()) }
     }
 
     override suspend fun getApiUri(providerId: String): String? =

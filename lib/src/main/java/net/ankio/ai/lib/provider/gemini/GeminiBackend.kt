@@ -44,8 +44,8 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
             .build()
         runCatchingExceptCancel {
             AiHttp.client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) error("HTTP ${response.code}")
                 val body = response.body?.string() ?: error("Empty body")
+                if (!response.isSuccessful) error("HTTP ${response.code}: $body")
                 json.decodeBody(body, GeminiModelsResponse.serializer()).models.map { it.name }
             }
         }.onSuccess { ctx.logD("models ok, count=${it.size}") }
@@ -55,17 +55,15 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
             }
     }
 
-    override suspend fun chat(
+    override suspend fun chatOnce(
         ctx: AiCtx,
         system: String,
         user: String,
         image: String,
-        onChunk: ((String) -> Unit)?,
     ): Result<String> = withContext(Dispatchers.IO) {
-        val stream = onChunk != null
-        val path = if (stream) "streamGenerateContent?alt=sse" else "generateContent"
+        val path = "generateContent"
         val generationConfig = GeminiGenerationConfig(temperature = ctx.temperature)
-        ctx.logD("POST :$path stream=$stream model=${ctx.model}")
+        ctx.logD("POST :$path stream=false model=${ctx.model}")
         val request = Request.Builder()
             .url("${baseUri(ctx)}/${ctx.model}:$path")
             .userAgent(ctx)
@@ -82,27 +80,53 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
         runCatchingExceptCancel {
             AiHttp.client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) error("HTTP ${response.code}: ${response.body?.string()}")
-                if (stream) {
-                    var chunks = 0
-                    response.body?.source()?.let { source ->
-                        while (!source.exhausted()) {
-                            val line = source.readUtf8Line() ?: break
-                            if (!line.startsWith("data: ")) continue
-                            val data = line.substring(6)
-                            if (data.isNotBlank() && data != "[DONE]") {
-                                parse(data, respSer)?.let {
-                                    chunks++
-                                    onChunk(it)
-                                }
+                val body = response.body?.string()?.removeThink() ?: error("Empty body")
+                parse(body, respSer) ?: error("Empty AI response")
+            }
+        }
+    }
+
+    override suspend fun chatStream(
+        ctx: AiCtx,
+        system: String,
+        user: String,
+        image: String,
+        onChunk: (String) -> Unit,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        val path = "streamGenerateContent?alt=sse"
+        val generationConfig = GeminiGenerationConfig(temperature = ctx.temperature)
+        ctx.logD("POST :$path stream=true model=${ctx.model}")
+        val request = Request.Builder()
+            .url("${baseUri(ctx)}/${ctx.model}:$path")
+            .userAgent(ctx)
+            .postJson(
+                json,
+                GeminiGenerateRequest.serializer(),
+                GeminiRequestFactory.build(system, user, image, generationConfig),
+            )
+            .addHeader("x-goog-api-key", ctx.apiKey)
+            .addHeader("Content-Type", "application/json")
+            .build()
+        val respSer = GeminiGenerateResponse.serializer()
+
+        runCatchingExceptCancel {
+            AiHttp.client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) error("HTTP ${response.code}: ${response.body?.string()}")
+                var chunks = 0
+                response.body?.source()?.let { source ->
+                    while (!source.exhausted()) {
+                        val line = source.readUtf8Line() ?: break
+                        if (!line.startsWith("data: ")) continue
+                        val data = line.substring(6)
+                        if (data.isNotBlank() && data != "[DONE]") {
+                            parse(data, respSer)?.let {
+                                chunks++
+                                onChunk(it)
                             }
                         }
                     }
-                    ctx.logD("stream ok, chunks=$chunks")
-                    ""
-                } else {
-                    val body = response.body?.string()?.removeThink() ?: error("Empty body")
-                    parse(body, respSer) ?: error("Empty AI response")
                 }
+                ctx.logD("stream ok, chunks=$chunks")
             }
         }
     }

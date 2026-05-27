@@ -4,10 +4,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Key
@@ -34,6 +37,8 @@ import kotlinx.coroutines.launch
 import net.ankio.ai.lib.Ai
 import net.ankio.ai.lib.R
 import net.ankio.ai.lib.core.ProviderSettings
+import net.ankio.ai.lib.core.displayMessage
+import net.ankio.ai.lib.core.sanitizeCredential
 import net.ankio.ai.lib.provider.ProviderDef
 import net.ankio.ai.lib.test.AiTest
 import net.ankio.ai.lib.test.AiTestResult
@@ -72,6 +77,7 @@ import kotlin.math.round
  * @param onSave 点击保存。
  * @param onTestStateChange 测试/保存结果状态更新。
  * @param onOpenCreateKeyUri 打开申请 Key 外链（非空 [ProviderDef.createKeyUri] 时显示按钮）。
+ * @param scrollEnabled 为 `false` 时由外层提供滚动（嵌入已有 Scroll 容器时使用）。
  */
 @Composable
 fun AiSettingsScreen(
@@ -87,6 +93,7 @@ fun AiSettingsScreen(
     onSave: () -> Unit,
     onTestStateChange: (AiTestUiState) -> Unit,
     modifier: Modifier = Modifier,
+    scrollEnabled: Boolean = true,
     onOpenCreateKeyUri: (String) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
@@ -109,6 +116,9 @@ fun AiSettingsScreen(
     val savedMessage = stringResource(R.string.ai_saved)
     val refreshModelsMessage = stringResource(R.string.ai_refresh_models)
     val refreshModelsFailedTemplate = stringResource(R.string.ai_refresh_models_failed)
+    val refreshModelsRunningMessage = stringResource(R.string.ai_refresh_models_running)
+    val refreshModelsSuccessTemplate = stringResource(R.string.ai_refresh_models_success)
+    val refreshModelsEmptyMessage = stringResource(R.string.ai_refresh_models_empty)
     val showKeyLabel = stringResource(R.string.ai_show_api_key)
     val hideKeyLabel = stringResource(R.string.ai_hide_api_key)
 
@@ -127,24 +137,37 @@ fun AiSettingsScreen(
         }
         scope.launch {
             isRefreshingModels = true
+            onTestStateChange(AiTestUiState.RefreshingModels)
             ai.listModels(settings)
                 .onSuccess { models ->
                     modelItems = models
-                    if (models.isNotEmpty() && state.model !in models) {
-                        onModelChange(
-                            def.defaultModel.takeIf { it in models } ?: models.first(),
-                        )
+                    when {
+                        models.isEmpty() -> {
+                            onTestStateChange(AiTestUiState.Failure(refreshModelsEmptyMessage))
+                        }
+
+                        else -> {
+                            if (state.model !in models) {
+                                onModelChange(
+                                    def.defaultModel.takeIf { it in models } ?: models.first(),
+                                )
+                            }
+                            onTestStateChange(AiTestUiState.ModelsRefreshed(models.size))
+                        }
                     }
                 }
                 .onFailure { error ->
-                    val detail = error.message.orEmpty().ifBlank { "unknown" }
                     onTestStateChange(
-                        AiTestUiState.Failure(refreshModelsFailedTemplate.format(detail)),
+                        AiTestUiState.Failure(
+                            refreshModelsFailedTemplate.format(error.displayMessage()),
+                        ),
                     )
                 }
             isRefreshingModels = false
         }
     }
+
+    val scrollState = rememberScrollState()
 
     LaunchedEffect(state.providerId) {
         modelItems = emptyList()
@@ -154,6 +177,15 @@ fun AiSettingsScreen(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .then(
+                if (scrollEnabled) {
+                    Modifier
+                        .fillMaxHeight()
+                        .verticalScroll(scrollState)
+                } else {
+                    Modifier
+                },
+            )
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -177,7 +209,7 @@ fun AiSettingsScreen(
         )
         ThemeSettingTextField(
             value = state.apiKey,
-            onValueChange = onApiKeyChange,
+            onValueChange = { onApiKeyChange(it.sanitizeCredential()) },
             title = stringResource(R.string.ai_api_key),
             inputMode = if (apiKeyVisible) SettingInputMode.Text else SettingInputMode.Password,
             startAction = { SettingIcon(Icons.Filled.Key) },
@@ -310,9 +342,10 @@ fun AiSettingsScreen(
                                     }
 
                                     is AiTestResult.Failure -> {
-                                        val detail = result.message.ifBlank { "unknown" }
                                         onTestStateChange(
-                                            AiTestUiState.Failure(failedTemplate.format(detail)),
+                                            AiTestUiState.Failure(
+                                                failedTemplate.format(result.message),
+                                            ),
                                         )
                                     }
                                 }
@@ -329,6 +362,8 @@ fun AiSettingsScreen(
                     testingMessage = testingMessage,
                     successMessage = successMessage,
                     savedMessage = savedMessage,
+                    refreshModelsRunningMessage = refreshModelsRunningMessage,
+                    refreshModelsSuccessTemplate = refreshModelsSuccessTemplate,
                 )
             }
         }
@@ -359,6 +394,8 @@ internal fun AiTestResultContent(
     testingMessage: String,
     successMessage: String,
     savedMessage: String,
+    refreshModelsRunningMessage: String,
+    refreshModelsSuccessTemplate: String,
 ) {
     val idleMessage = stringResource(R.string.ai_test_result_idle)
     val title = stringResource(R.string.ai_test_result_title)
@@ -377,15 +414,27 @@ internal fun AiTestResultContent(
                 color = AnkioTheme.colorScheme.onSurfaceVariant,
             )
 
-            AiTestUiState.Running -> {
+            AiTestUiState.Running,
+            AiTestUiState.RefreshingModels,
+                -> {
                 ThemeLinearProgressIndicator(Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 ThemeText(
-                    text = testingMessage,
+                    text = if (testState is AiTestUiState.RefreshingModels) {
+                        refreshModelsRunningMessage
+                    } else {
+                        testingMessage
+                    },
                     style = AnkioTheme.textStyles.body2,
                     color = AnkioTheme.colorScheme.primary,
                 )
             }
+
+            is AiTestUiState.ModelsRefreshed -> ThemeText(
+                text = refreshModelsSuccessTemplate.format(testState.count),
+                style = AnkioTheme.textStyles.body2,
+                color = AnkioTheme.colorScheme.primary,
+            )
 
             AiTestUiState.Success -> ThemeText(
                 text = successMessage,

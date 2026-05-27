@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.ankio.ai.lib.Ai
 import net.ankio.ai.lib.core.ProviderSettings
+import net.ankio.ai.lib.core.displayMessage
 
 /** 设置页「测试连接」的结果。 */
 sealed interface AiTestResult {
@@ -32,7 +33,7 @@ object AiTest {
             }
             ai.testConnection(settings).fold(
                 onSuccess = { AiTestResult.Success },
-                onFailure = { AiTestResult.Failure(it.message ?: it.javaClass.simpleName) },
+                onFailure = { AiTestResult.Failure(it.displayMessage()) },
             )
         }
 }

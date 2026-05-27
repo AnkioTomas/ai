@@ -1,6 +1,8 @@
 package net.ankio.ai.lib.ui.settings
 
 import net.ankio.ai.lib.core.ProviderSettings
+import net.ankio.ai.lib.core.sanitizeCredential
+import net.ankio.ai.lib.core.sanitizeSingleLine
 import net.ankio.ai.lib.provider.ProviderDef
 
 /**
@@ -24,7 +26,8 @@ data class AiSettingsState(
     val testState: AiTestUiState = AiTestUiState.Idle,
 ) {
     /** 是否正在执行连接测试。 */
-    val isTesting: Boolean get() = testState is AiTestUiState.Running
+    val isTesting: Boolean
+        get() = testState is AiTestUiState.Running || testState is AiTestUiState.RefreshingModels
 
     /**
      * 转为 [ProviderSettings]（空白 apiUri/model 存为 `null`）。
@@ -33,9 +36,9 @@ data class AiSettingsState(
      */
     fun toSettings() = ProviderSettings(
         providerId = providerId,
-        apiKey = apiKey.trim(),
-        apiUri = apiUri.trim().ifBlank { null },
-        model = model.trim().ifBlank { null },
+        apiKey = apiKey.sanitizeCredential(),
+        apiUri = apiUri.sanitizeSingleLine().ifBlank { null },
+        model = model.sanitizeSingleLine().ifBlank { null },
         visionEnabled = visionEnabled,
         temperature = temperature,
     )
@@ -58,9 +61,9 @@ data class AiSettingsState(
             val resolved = settings.withProviderDefaults(def)
             return AiSettingsState(
                 providerId = resolved.providerId,
-                apiKey = resolved.apiKey,
-                apiUri = resolved.apiUri.orEmpty(),
-                model = resolved.model.orEmpty(),
+                apiKey = resolved.apiKey.sanitizeCredential(),
+                apiUri = resolved.apiUri.orEmpty().sanitizeSingleLine(),
+                model = resolved.model.orEmpty().sanitizeSingleLine(),
                 visionEnabled = resolved.visionEnabled,
                 temperature = resolved.temperature,
             )

@@ -10,6 +10,16 @@ sealed interface AiTestUiState {
     /** 正在测试连接。 */
     data object Running : AiTestUiState
 
+    /** 正在刷新模型列表。 */
+    data object RefreshingModels : AiTestUiState
+
+    /**
+     * 模型列表刷新成功。
+     *
+     * @param count 拉取到的模型数量。
+     */
+    data class ModelsRefreshed(val count: Int) : AiTestUiState
+
     /** 测试成功。 */
     data object Success : AiTestUiState
 

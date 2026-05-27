@@ -2,6 +2,9 @@ package net.ankio.ai.lib.provider
 
 import net.ankio.ai.lib.core.AiLogger
 import net.ankio.ai.lib.core.ProviderSettings
+import net.ankio.ai.lib.core.formatLogError
+import net.ankio.ai.lib.core.sanitizeCredential
+import net.ankio.ai.lib.core.sanitizeSingleLine
 import net.ankio.ai.lib.provider.AiProviders.DEFAULT_ID
 import net.ankio.ai.lib.provider.gemini.GeminiBackend
 import net.ankio.ai.lib.provider.openai.OpenAiBackend
@@ -42,14 +45,18 @@ internal data class AiCtx(
     val logger: AiLogger,
     val userAgent: String,
 ) {
-    /** 当前请求的 API Key。 */
-    val apiKey get() = settings.apiKey
+    /** 当前请求的 API Key（已去除非法换行）。 */
+    val apiKey get() = settings.apiKey.sanitizeCredential()
 
     /** 生效的 API 根地址（自定义优先，否则 [ProviderDef.defaultApiUri]）。 */
-    val apiUri get() = settings.apiUri?.takeIf { it.isNotBlank() } ?: def.defaultApiUri
+    val apiUri
+        get() =
+            (settings.apiUri?.takeIf { it.isNotBlank() } ?: def.defaultApiUri).sanitizeSingleLine()
 
     /** 生效的模型名（自定义优先，否则 [ProviderDef.defaultModel]）。 */
-    val model get() = settings.model?.takeIf { it.isNotBlank() } ?: def.defaultModel
+    val model
+        get() =
+            (settings.model?.takeIf { it.isNotBlank() } ?: def.defaultModel).sanitizeSingleLine()
 
     /** 是否启用视觉。 */
     val visionEnabled get() = settings.visionEnabled
@@ -63,8 +70,8 @@ internal data class AiCtx(
     /** 输出 debug 日志。 */
     fun logD(msg: String) = logger.debug(tag, msg)
 
-    /** 输出 error 日志。 */
-    fun logE(msg: String, t: Throwable? = null) = logger.error(tag, msg, t)
+    /** 输出 error 日志（文案含 [Throwable.displayMessage]）。 */
+    fun logE(msg: String, t: Throwable? = null) = logger.error(tag, formatLogError(msg, t), t)
 }
 
 /** 某一协议族（OpenAI 兼容 / Gemini）的后端实现。 */
@@ -76,18 +83,27 @@ internal interface ProviderBackend {
     suspend fun models(ctx: AiCtx): List<String>
 
     /**
-     * 发起对话。
-     *
-     * @param onChunk 非空时走流式；为空时返回完整文本。
-     * @return 非流式时为完整回复；流式时返回空字符串，内容通过 [onChunk] 推送。
+     * 非流式对话：返回完整回复文本。
      */
-    suspend fun chat(
+    suspend fun chatOnce(
         ctx: AiCtx,
         system: String,
         user: String,
         image: String,
-        onChunk: ((String) -> Unit)?,
     ): Result<String>
+
+    /**
+     * 流式对话：通过 [onChunk] 逐段接收增量文本。
+     *
+     * 返回值仅用于表达“请求/解析是否成功”；流式内容由 [onChunk] 推送。
+     */
+    suspend fun chatStream(
+        ctx: AiCtx,
+        system: String,
+        user: String,
+        image: String,
+        onChunk: (String) -> Unit,
+    ): Result<Unit>
 }
 
 /** 内置提供商注册表与 [ProviderBackend] 工厂。 */

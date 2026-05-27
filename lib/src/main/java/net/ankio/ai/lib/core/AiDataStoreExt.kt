@@ -10,9 +10,9 @@ package net.ankio.ai.lib.core
 suspend fun AiDataStore.loadSettings(providerId: String): ProviderSettings =
     ProviderSettings(
         providerId = providerId,
-        apiKey = getApiKey(providerId),
-        apiUri = getApiUri(providerId),
-        model = getModel(providerId),
+        apiKey = getApiKey(providerId).sanitizeCredential(),
+        apiUri = getApiUri(providerId)?.sanitizeSingleLine(),
+        model = getModel(providerId)?.sanitizeSingleLine(),
         visionEnabled = getVisionEnabled(providerId),
         temperature = getTemperature(providerId),
     )
@@ -24,9 +24,9 @@ suspend fun AiDataStore.loadSettings(providerId: String): ProviderSettings =
  */
 suspend fun AiDataStore.saveSettings(settings: ProviderSettings) {
     val id = settings.providerId
-    setApiKey(id, settings.apiKey)
-    setApiUri(id, settings.apiUri)
-    setModel(id, settings.model)
+    setApiKey(id, settings.apiKey.sanitizeCredential())
+    setApiUri(id, settings.apiUri?.sanitizeSingleLine())
+    setModel(id, settings.model?.sanitizeSingleLine())
     setVisionEnabled(id, settings.visionEnabled)
     setTemperature(id, settings.temperature)
 }

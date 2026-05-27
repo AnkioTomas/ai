@@ -18,6 +18,9 @@
     <string name="ai_model_list_empty">暂无模型，请先点击刷新</string>
     <string name="ai_refresh_models">刷新模型列表</string>
     <string name="ai_refresh_models_failed">刷新模型失败：%1$s</string>
+    <string name="ai_refresh_models_running">正在刷新模型列表…</string>
+    <string name="ai_refresh_models_success">已加载 %1$d 个模型</string>
+    <string name="ai_refresh_models_empty">未获取到模型，请检查 API Key 与地址</string>
     <string name="ai_save">保存</string>
     <string name="ai_test">测试连接</string>
     <string name="ai_test_running">正在测试连接…</string>

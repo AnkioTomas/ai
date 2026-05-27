@@ -18,6 +18,9 @@
     <string name="ai_model_list_empty">No models yet. Tap refresh first.</string>
     <string name="ai_refresh_models">Refresh model list</string>
     <string name="ai_refresh_models_failed">Failed to refresh models: %1$s</string>
+    <string name="ai_refresh_models_running">Refreshing model list…</string>
+    <string name="ai_refresh_models_success">Loaded %1$d models</string>
+    <string name="ai_refresh_models_empty">No models returned. Check API Key and URL.</string>
     <string name="ai_save">Save</string>
     <string name="ai_test">Test connection</string>
     <string name="ai_test_running">Testing connection…</string>

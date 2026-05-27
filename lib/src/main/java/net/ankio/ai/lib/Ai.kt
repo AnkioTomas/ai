@@ -1,8 +1,11 @@
 package net.ankio.ai.lib
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import net.ankio.ai.lib.core.AiDataStore
 import net.ankio.ai.lib.core.AiLogger
 import net.ankio.ai.lib.core.ProviderSettings
+import net.ankio.ai.lib.core.formatLogError
 import net.ankio.ai.lib.core.loadSettings
 import net.ankio.ai.lib.core.runCatchingExceptCancel
 import net.ankio.ai.lib.core.saveSettings
@@ -124,12 +127,11 @@ class Ai(
 
     /** 文本连通性探测：要求模型回复包含「连通」。 */
     private suspend fun testTextConnection(backend: ProviderBackend, ctx: AiCtx): Result<Unit> =
-        backend.chat(
+        backend.chatOnce(
             ctx,
             system = "",
             user = "请仅回复一个词：连通",
             image = "",
-            onChunk = null,
         ).mapCatching { body ->
             val reply = body.trim()
             if (reply.isEmpty()) error("AI 返回为空")
@@ -138,13 +140,12 @@ class Ai(
 
     /** 视觉连通性探测：要求模型能读取测试图中的 AUTO TEST 文字。 */
     private suspend fun testVisionConnection(backend: ProviderBackend, ctx: AiCtx): Result<Unit> =
-        backend.chat(
+        backend.chatOnce(
             ctx,
             system = "",
             user = "这是一张连接测试图片，图中文字为「AUTO TEST」。请判断你能否读取图片中的文字。" +
                 "若能读取，请回复「可以读取」并简要说明你看到的文字。",
             image = AiTestDemo.IMAGE_BASE64,
-            onChunk = null,
         ).mapCatching { body ->
             val reply = body.trim()
             if (reply.isEmpty()) error("AI 返回为空")
@@ -167,8 +168,10 @@ class Ai(
             userAgent,
         )
         logD(settings.providerId, "listModels")
-        return runCatchingExceptCancel {
-            AiProviders.backend(settings.providerId).models(ctx)
+        return withContext(Dispatchers.IO) {
+            runCatchingExceptCancel {
+                AiProviders.backend(settings.providerId).models(ctx)
+            }
         }.also { result ->
             result.onSuccess { logD(settings.providerId, "listModels ok, count=${it.size}") }
                 .onFailure { logE(settings.providerId, "listModels failed", it) }
@@ -208,8 +211,8 @@ class Ai(
             userLen = user.length,
             systemLen = system.length
         )
-        return backend(providerId).chat(ctx, system, user, image, onChunk = null)
-            .also { logChatResult(ctx, it) }
+        return backend(providerId).chatOnce(ctx, system, user, image)
+            .also { logChatOnceResult(ctx, it) }
     }
 
     /**
@@ -232,8 +235,8 @@ class Ai(
             userLen = user.length,
             systemLen = system.length
         )
-        backend(providerId).chat(ctx, system, user, image, onChunk)
-            .also { logChatResult(ctx, it) }
+        backend(providerId).chatStream(ctx, system, user, image, onChunk)
+            .also { logChatStreamResult(ctx, it) }
     }
 
     /** 组装单次请求的上下文（含解析后的 apiUri、model）。 */
@@ -255,7 +258,7 @@ class Ai(
     }
 
     private fun logE(providerId: String, message: String, throwable: Throwable?) {
-        logger.error("Ai/$providerId", message, throwable)
+        logger.error("Ai/$providerId", formatLogError(message, throwable), throwable)
     }
 
     private fun logChatStart(
@@ -272,9 +275,14 @@ class Ai(
         )
     }
 
-    private fun logChatResult(ctx: AiCtx, result: Result<String>) {
+    private fun logChatOnceResult(ctx: AiCtx, result: Result<String>) {
         result.onSuccess { reply ->
-            ctx.logD(if (reply.isEmpty()) "chat ok (stream)" else "chat ok, chars=${reply.length}")
+            ctx.logD("chat ok, chars=${reply.length}")
         }.onFailure { ctx.logE("chat failed", it) }
+    }
+
+    private fun logChatStreamResult(ctx: AiCtx, result: Result<Unit>) {
+        result.onSuccess { ctx.logD("chat ok (stream)") }
+            .onFailure { ctx.logE("chat failed", it) }
     }
 }

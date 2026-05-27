@@ -1,14 +1,14 @@
 package net.ankio.ai.lib.core
 
-import kotlinx.serialization.Serializable
 import net.ankio.ai.lib.provider.ProviderDef
 
 /**
  * 某一 AI 提供商的完整连接配置。
  *
  * 用于持久化、表单状态与 HTTP 请求；[apiUri]、[model] 可为 `null` 表示使用 [ProviderDef] 默认值。
+ *
+ * 持久化由 [AiDataStore] 按字段读写，**不会**对此类做 JSON 整包序列化。
  */
-@Serializable
 data class ProviderSettings(
     /** 提供商 id，对应 [ProviderDef.id]。 */
     val providerId: String,
