@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import net.ankio.ai.lib.Ai
 import net.ankio.ai.lib.R
+import net.ankio.ai.lib.core.ProviderSettings
 import net.ankio.ai.lib.provider.ProviderDef
 import net.ankio.ai.lib.test.AiTest
 import net.ankio.ai.lib.test.AiTestResult
@@ -47,8 +49,10 @@ import net.ankio.theme.settings.SettingCardPosition
 import net.ankio.theme.settings.SettingInputMode
 import net.ankio.theme.settings.ThemeSectionHeader
 import net.ankio.theme.settings.ThemeSettingDropdown
+import net.ankio.theme.settings.ThemeSettingSlider
 import net.ankio.theme.settings.ThemeSettingSwitch
 import net.ankio.theme.settings.ThemeSettingTextField
+import kotlin.math.round
 
 /**
  * AI 提供商配置 Compose 页面。
@@ -64,6 +68,7 @@ import net.ankio.theme.settings.ThemeSettingTextField
  * @param onApiUriChange API 地址变更。
  * @param onModelChange 模型名变更。
  * @param onVisionEnabledChange 视觉开关变更。
+ * @param onTemperatureChange 采样温度变更（`0.0`～`2.0`）。
  * @param onSave 点击保存。
  * @param onTestStateChange 测试/保存结果状态更新。
  * @param onOpenCreateKeyUri 打开申请 Key 外链（非空 [ProviderDef.createKeyUri] 时显示按钮）。
@@ -78,6 +83,7 @@ fun AiSettingsScreen(
     onApiUriChange: (String) -> Unit,
     onModelChange: (String) -> Unit,
     onVisionEnabledChange: (Boolean) -> Unit,
+    onTemperatureChange: (Double) -> Unit,
     onSave: () -> Unit,
     onTestStateChange: (AiTestUiState) -> Unit,
     modifier: Modifier = Modifier,
@@ -212,7 +218,7 @@ fun AiSettingsScreen(
             summary = stringResource(R.string.ai_model_hint, def.defaultModel),
             placeholder = def.defaultModel,
             startAction = { SettingIcon(Icons.Filled.SmartToy) },
-            position = SettingCardPosition.Last,
+            position = SettingCardPosition.Middle,
             enabled = !isRefreshingModels,
             fieldEndAction = {
                 SettingFieldListPopup(
@@ -233,6 +239,22 @@ fun AiSettingsScreen(
                     )
                 }
             },
+        )
+
+        val temperatureValue = snapAiTemperature(state.temperature.toFloat())
+        ThemeSettingSlider(
+            title = stringResource(R.string.ai_temperature),
+            summary = stringResource(
+                R.string.ai_temperature_summary,
+                ProviderSettings.DEFAULT_TEMPERATURE,
+            ),
+            value = temperatureValue,
+            onValueChange = { onTemperatureChange(snapAiTemperature(it).toDouble()) },
+            valueRange = AI_TEMPERATURE_MIN..AI_TEMPERATURE_MAX,
+            steps = AI_TEMPERATURE_STEPS,
+            valueLabel = stringResource(R.string.ai_temperature_value, temperatureValue),
+            startAction = { SettingIcon(Icons.Filled.Tune) },
+            position = SettingCardPosition.Last,
         )
 
         ThemeSettingSwitch(
@@ -385,3 +407,13 @@ internal fun AiTestResultContent(
         }
     }
 }
+
+private const val AI_TEMPERATURE_MIN = 0f
+private const val AI_TEMPERATURE_MAX = 2f
+private const val AI_TEMPERATURE_STEP = 0.1f
+private const val AI_TEMPERATURE_STEPS =
+    ((AI_TEMPERATURE_MAX - AI_TEMPERATURE_MIN) / AI_TEMPERATURE_STEP).toInt() - 1
+
+private fun snapAiTemperature(value: Float): Float =
+    (round(value / AI_TEMPERATURE_STEP) * AI_TEMPERATURE_STEP)
+        .coerceIn(AI_TEMPERATURE_MIN, AI_TEMPERATURE_MAX)

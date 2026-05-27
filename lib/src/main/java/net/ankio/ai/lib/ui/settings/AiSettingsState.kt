@@ -11,6 +11,7 @@ import net.ankio.ai.lib.provider.ProviderDef
  * @param apiUri API 地址输入框内容（可已由默认值填充）。
  * @param model 模型名输入框内容。
  * @param visionEnabled 是否启用视觉识别。
+ * @param temperature 采样温度，范围建议 `0.0`～`2.0`。
  * @param testState 连接测试结果展示状态。
  */
 data class AiSettingsState(
@@ -19,6 +20,7 @@ data class AiSettingsState(
     val apiUri: String = "",
     val model: String = "",
     val visionEnabled: Boolean = true,
+    val temperature: Double = ProviderSettings.DEFAULT_TEMPERATURE,
     val testState: AiTestUiState = AiTestUiState.Idle,
 ) {
     /** 是否正在执行连接测试。 */
@@ -35,6 +37,7 @@ data class AiSettingsState(
         apiUri = apiUri.trim().ifBlank { null },
         model = model.trim().ifBlank { null },
         visionEnabled = visionEnabled,
+        temperature = temperature,
     )
 
     /**
@@ -59,6 +62,7 @@ data class AiSettingsState(
                 apiUri = resolved.apiUri.orEmpty(),
                 model = resolved.model.orEmpty(),
                 visionEnabled = resolved.visionEnabled,
+                temperature = resolved.temperature,
             )
         }
     }

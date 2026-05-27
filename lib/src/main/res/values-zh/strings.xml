@@ -8,6 +8,9 @@
     <string name="ai_model">模型</string>
     <string name="ai_model_hint">留空使用默认：%1$s</string>
     <string name="ai_vision_enabled">启用视觉识别</string>
+    <string name="ai_temperature">采样温度</string>
+    <string name="ai_temperature_summary">越高越发散，默认 %1$.1f</string>
+    <string name="ai_temperature_value">%1$.1f</string>
     <string name="ai_create_key">获取 API Key</string>
     <string name="ai_show_api_key">显示 API Key</string>
     <string name="ai_hide_api_key">隐藏 API Key</string>
