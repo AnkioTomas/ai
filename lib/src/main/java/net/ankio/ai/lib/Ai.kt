@@ -40,7 +40,11 @@ class Ai(
      */
     suspend fun activeProviderId(): String {
         val id = store.getActiveProviderId()
-        return if (providers.any { it.id == id }) id else AiProviders.DEFAULT_ID
+        if (providers.none { it.id == id }) {
+            logW(id, "unknown active provider, fallback to ${AiProviders.DEFAULT_ID}")
+            return AiProviders.DEFAULT_ID
+        }
+        return id
     }
 
     /**
@@ -52,6 +56,7 @@ class Ai(
      */
     suspend fun switchProvider(providerId: String) {
         AiProviders.def(providerId)
+        logD(providerId, "switchProvider")
         store.setActiveProviderId(providerId)
     }
 
@@ -75,6 +80,10 @@ class Ai(
      */
     suspend fun saveSettings(settings: ProviderSettings) {
         AiProviders.def(settings.providerId)
+        logD(
+            settings.providerId,
+            "saveSettings model=${settings.model} vision=${settings.visionEnabled} temp=${settings.temperature}",
+        )
         store.saveSettings(settings)
     }
 
@@ -99,10 +108,17 @@ class Ai(
             userAgent,
         )
         val backend = AiProviders.backend(settings.providerId)
-        return if (settings.visionEnabled) {
+        logD(
+            settings.providerId,
+            "testConnection vision=${settings.visionEnabled} model=${ctx.model}",
+        )
+        return (if (settings.visionEnabled) {
             testVisionConnection(backend, ctx)
         } else {
             testTextConnection(backend, ctx)
+        }).also { result ->
+            result.onSuccess { logD(settings.providerId, "testConnection ok") }
+                .onFailure { logE(settings.providerId, "testConnection failed", it) }
         }
     }
 
@@ -150,8 +166,12 @@ class Ai(
             logger,
             userAgent,
         )
+        logD(settings.providerId, "listModels")
         return runCatchingExceptCancel {
             AiProviders.backend(settings.providerId).models(ctx)
+        }.also { result ->
+            result.onSuccess { logD(settings.providerId, "listModels ok, count=${it.size}") }
+                .onFailure { logE(settings.providerId, "listModels failed", it) }
         }
     }
 
@@ -181,7 +201,15 @@ class Ai(
         providerId: String? = null,
     ): Result<String> {
         val ctx = ctx(providerId)
+        logChatStart(
+            ctx,
+            stream = false,
+            image = image,
+            userLen = user.length,
+            systemLen = system.length
+        )
         return backend(providerId).chat(ctx, system, user, image, onChunk = null)
+            .also { logChatResult(ctx, it) }
     }
 
     /**
@@ -197,7 +225,15 @@ class Ai(
         onChunk: (String) -> Unit,
     ) {
         val ctx = ctx(providerId)
+        logChatStart(
+            ctx,
+            stream = true,
+            image = image,
+            userLen = user.length,
+            systemLen = system.length
+        )
         backend(providerId).chat(ctx, system, user, image, onChunk)
+            .also { logChatResult(ctx, it) }
     }
 
     /** 组装单次请求的上下文（含解析后的 apiUri、model）。 */
@@ -210,4 +246,35 @@ class Ai(
     private suspend fun backend(providerId: String?) =
         AiProviders.backend(providerId ?: activeProviderId())
 
+    private fun logD(providerId: String, message: String) {
+        logger.debug("Ai/$providerId", message)
+    }
+
+    private fun logW(providerId: String, message: String) {
+        logger.error("Ai/$providerId", message, null)
+    }
+
+    private fun logE(providerId: String, message: String, throwable: Throwable?) {
+        logger.error("Ai/$providerId", message, throwable)
+    }
+
+    private fun logChatStart(
+        ctx: AiCtx,
+        stream: Boolean,
+        image: String,
+        userLen: Int,
+        systemLen: Int,
+    ) {
+        ctx.logD(
+            "chat start stream=$stream model=${ctx.model} temp=${ctx.temperature} " +
+                    "vision=${ctx.visionEnabled} image=${image.isNotBlank()} " +
+                    "userLen=$userLen systemLen=$systemLen",
+        )
+    }
+
+    private fun logChatResult(ctx: AiCtx, result: Result<String>) {
+        result.onSuccess { reply ->
+            ctx.logD(if (reply.isEmpty()) "chat ok (stream)" else "chat ok, chars=${reply.length}")
+        }.onFailure { ctx.logE("chat failed", it) }
+    }
 }

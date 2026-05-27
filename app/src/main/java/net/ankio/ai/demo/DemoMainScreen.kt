@@ -21,7 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import net.ankio.ai.demo.store.AiSettingsStore
-import net.ankio.ai.demo.store.NoOpAiLogger
+import net.ankio.ai.demo.store.LogcatAiLogger
 import net.ankio.ai.lib.AI_DEFAULT_PROVIDER_ID
 import net.ankio.ai.lib.Ai
 import net.ankio.ai.lib.ui.settings.AiSettingsScreen
@@ -40,7 +40,7 @@ fun DemoMainScreen(
     var selectedTab by rememberSaveable { mutableStateOf(DemoTab.Settings) }
 
     val store = remember { AiSettingsStore(context) }
-    val ai = remember(store) { Ai(store, NoOpAiLogger) }
+    val ai = remember(store) { Ai(store, LogcatAiLogger) }
 
     var settingsState by remember {
         mutableStateOf(
@@ -66,6 +66,7 @@ fun DemoMainScreen(
         Box(modifier = Modifier.weight(1f)) {
             when (selectedTab) {
                 DemoTab.Settings -> AiSettingsScreen(
+                    modifier = Modifier.fillMaxSize(),
                     ai = ai,
                     providers = ai.providers,
                     state = settingsState,

@@ -36,6 +36,7 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
     }
 
     override suspend fun models(ctx: AiCtx): List<String> = withContext(Dispatchers.IO) {
+        ctx.logD("fetch models")
         val request = Request.Builder()
             .url("${baseUri(ctx)}?key=${ctx.apiKey}")
             .userAgent(ctx)
@@ -47,10 +48,11 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
                 val body = response.body?.string() ?: error("Empty body")
                 json.decodeBody(body, GeminiModelsResponse.serializer()).models.map { it.name }
             }
-        }.getOrElse {
-            ctx.logE("获取模型失败", it)
-            emptyList()
-        }
+        }.onSuccess { ctx.logD("models ok, count=${it.size}") }
+            .getOrElse {
+                ctx.logE("models failed", it)
+                throw it
+            }
     }
 
     override suspend fun chat(
@@ -60,8 +62,10 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
         image: String,
         onChunk: ((String) -> Unit)?,
     ): Result<String> = withContext(Dispatchers.IO) {
-        val path = if (onChunk == null) "generateContent" else "streamGenerateContent?alt=sse"
+        val stream = onChunk != null
+        val path = if (stream) "streamGenerateContent?alt=sse" else "generateContent"
         val generationConfig = GeminiGenerationConfig(temperature = ctx.temperature)
+        ctx.logD("POST :$path stream=$stream model=${ctx.model}")
         val request = Request.Builder()
             .url("${baseUri(ctx)}/${ctx.model}:$path")
             .userAgent(ctx)
@@ -78,17 +82,22 @@ internal class GeminiBackend(override val def: ProviderDef) : ProviderBackend {
         runCatchingExceptCancel {
             AiHttp.client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) error("HTTP ${response.code}: ${response.body?.string()}")
-                if (onChunk != null) {
+                if (stream) {
+                    var chunks = 0
                     response.body?.source()?.let { source ->
                         while (!source.exhausted()) {
                             val line = source.readUtf8Line() ?: break
                             if (!line.startsWith("data: ")) continue
                             val data = line.substring(6)
                             if (data.isNotBlank() && data != "[DONE]") {
-                                parse(data, respSer)?.let(onChunk)
+                                parse(data, respSer)?.let {
+                                    chunks++
+                                    onChunk(it)
+                                }
                             }
                         }
                     }
+                    ctx.logD("stream ok, chunks=$chunks")
                     ""
                 } else {
                     val body = response.body?.string()?.removeThink() ?: error("Empty body")

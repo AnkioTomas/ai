@@ -46,12 +46,14 @@ internal class OpenAiBackend(
         return runCatchingExceptCancel {
             AiHttp.client.newCall(request).execute().use { response ->
                 val body = response.body?.string() ?: error("Empty body")
+                if (!response.isSuccessful) error("HTTP ${response.code}: $body")
                 json.decodeBody(body, ModelsListResponse.serializer()).data.map { it.id }
             }
-        }.getOrElse {
-            ctx.logE("获取模型失败", it)
-            emptyList()
-        }
+        }.onSuccess { ctx.logD("models ok, count=${it.size}") }
+            .getOrElse {
+                ctx.logE("models failed", it)
+                throw it
+            }
     }
 
     override suspend fun chat(
@@ -67,18 +69,20 @@ internal class OpenAiBackend(
             temperature = ctx.temperature,
             stream = if (onChunk != null) true else null,
         )
+        val stream = onChunk != null
         val request = Request.Builder()
             .url("${ctx.apiUri.trimEnd('/')}${def.chatPath}")
             .addHeader("Authorization", "Bearer ${ctx.apiKey}")
             .addHeader("Content-Type", "application/json")
-            .apply { if (onChunk != null) addHeader("Accept", "text/event-stream") }
+            .apply { if (stream) addHeader("Accept", "text/event-stream") }
             .userAgent(ctx)
             .postJson(json, ChatCompletionRequest.serializer(), body)
             .build()
 
+        ctx.logD("POST ${def.chatPath} stream=$stream messages=${body.messages.size}")
         return runCatchingExceptCancel {
             if (onChunk != null) {
-                stream(request, onChunk)
+                stream(ctx, request, onChunk)
                 ""
             } else {
                 AiHttp.client.newCall(request).execute().use { response ->
@@ -96,21 +100,29 @@ internal class OpenAiBackend(
     }
 
     /** 解析 SSE `data:` 行并回调增量文本。 */
-    private suspend fun stream(request: Request, onChunk: (String) -> Unit) {
+    private suspend fun stream(ctx: AiCtx, request: Request, onChunk: (String) -> Unit) {
         withContext(Dispatchers.IO) {
             AiHttp.client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext
-                val source = response.body?.source() ?: return@withContext
+                if (!response.isSuccessful) {
+                    val errBody = response.body?.string().orEmpty()
+                    error("HTTP ${response.code}: $errBody")
+                }
+                val source = response.body?.source() ?: error("Empty body")
                 val ser = ChatCompletionStreamChunk.serializer()
+                var chunks = 0
                 while (!source.exhausted()) {
                     val line = source.readUtf8Line() ?: break
                     if (!line.startsWith("data: ")) continue
                     val data = line.substring(6)
                     if (data == "[DONE]") break
                     runCatchingExceptCancel {
-                        json.decodeBody(data, ser).firstDeltaContent()?.let(onChunk)
+                        json.decodeBody(data, ser).firstDeltaContent()?.let {
+                            chunks++
+                            onChunk(it)
+                        }
                     }
                 }
+                ctx.logD("stream ok, chunks=$chunks")
             }
         }
     }
