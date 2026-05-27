@@ -118,6 +118,7 @@ class Ai(
             testSettings,
             logger,
             userAgent,
+            proxy(),
         )
         val backend = AiProviders.backend(settings.providerId)
         logD(
@@ -175,6 +176,7 @@ class Ai(
             settings,
             logger,
             userAgent,
+            proxy(),
         )
         logD(settings.providerId, "listModels")
         return withContext(Dispatchers.IO) {
